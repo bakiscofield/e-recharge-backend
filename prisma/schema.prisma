@@ -1,0 +1,532 @@
+// Prisma Schema pour AliceBot PWA
+// Database: SQLite (pour faciliter le déploiement mobile)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== AUTHENTIFICATION ====================
+
+model User {
+  id            String   @id @default(uuid())
+  email         String?  @unique
+  phone         String   @unique
+  password      String?  // null si auth par OTP uniquement
+  firstName     String
+  lastName      String
+  country       String   // Code pays (TG, BJ, CI, etc.)
+  avatar        String?
+  isVerified    Boolean  @default(false)
+  isOnline      Boolean  @default(false) // Pour les agents/caissiers
+  lastSeen      DateTime @default(now())
+  role          String   @default("CLIENT") // CLIENT, AGENT, SUPPORT, ADMIN, SUPER_ADMIN
+  isActive      Boolean  @default(true) // Pour activer/désactiver un utilisateur
+  isSuperAdmin  Boolean  @default(false) // Identifie le Super Admin
+
+  // Email verification
+  emailVerified         Boolean  @default(false)
+  emailVerificationCode String?
+  emailVerificationCodeExpiresAt DateTime?
+
+  // Parrainage
+  referralCode  String?  @unique // Code utilisé pour parrainer
+  referredBy    String?  // Code du parrain
+  referralBalance Float  @default(0)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  orders              Order[]
+  bookmakerIds        BookmakerIdentifier[]
+  referralWithdrawals ReferralWithdrawal[]
+  pushSubscriptions   PushSubscription[]
+  chatConversationsAsClient ChatConversation[] @relation("ClientConversations")
+  chatMessagesAsSender      ChatMessage[]      @relation("SenderMessages")
+
+  // Pour les agents/caissiers
+  employeePaymentMethods EmployeePaymentMethod[]
+  chatConversationsAsAgent ChatConversation[] @relation("AgentConversations")
+
+  notifications       Notification[]
+  auditLogs           AuditLog[]
+  userRoles           UserRole[]
+  createdRoles        Role[]         @relation("CreatedRoles")
+
+  @@index([phone])
+  @@index([email])
+  @@index([referralCode])
+  @@index([role])
+  @@index([isOnline])
+  @@index([isActive])
+  @@index([isSuperAdmin])
+}
+
+model OtpCode {
+  id        String   @id @default(uuid())
+  phone     String
+  code      String
+  expiresAt DateTime
+  verified  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([phone, code])
+}
+
+// ==================== CONFIGURATION ====================
+
+model AppConfig {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       String   // JSON stringified
+  description String?
+  category    String   // theme, payment, general, messages, etc.
+  updatedAt   DateTime @updatedAt
+
+  @@index([category])
+}
+
+// ==================== BOOKMAKERS ====================
+
+model Bookmaker {
+  id          String   @id @default(uuid())
+  name        String
+  logo        String
+  countries   String   // JSON array: ["TG", "BJ", "CI"]
+  isActive    Boolean  @default(true)
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  orders                     Order[]
+  bookmakerIds               BookmakerIdentifier[]
+  employeePaymentMethods     EmployeePaymentMethod[]
+
+  @@index([isActive])
+}
+
+// ==================== MOYENS DE PAIEMENT ====================
+
+model PaymentMethod {
+  id             String   @id @default(uuid())
+  type           String   // MOBILE_MONEY, BANK, OTHER
+  name           String   // Flooz, TMoney, Visa, etc.
+  logo           String
+  countries      String   // JSON array
+  isActive       Boolean  @default(true)
+  order          Int      @default(0)
+
+  // Pour Mobile Money
+  ussdTemplate   String?  // Ex: "*155*1*{montant}*{numero}#"
+
+  // Instructions générales
+  instructions   String?
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  employeePaymentMethods EmployeePaymentMethod[]
+
+  @@index([type])
+  @@index([isActive])
+}
+
+// ==================== AGENTS / CAISSIERS ====================
+
+model EmployeePaymentMethod {
+  id              String   @id @default(uuid())
+
+  // Relations
+  employeeId      String
+  employee        User     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  bookmakerId     String
+  bookmaker       Bookmaker @relation(fields: [bookmakerId], references: [id], onDelete: Cascade)
+
+  paymentMethodId String
+  paymentMethod   PaymentMethod @relation(fields: [paymentMethodId], references: [id], onDelete: Cascade)
+
+  country         String   // TG, BJ, etc.
+
+  // Données spécifiques
+  syntaxe         String?  // Syntaxe USSD complète pour Mobile Money
+  frais           Float    @default(0)
+
+  // Pour retrait (adresse physique)
+  address         String?  // JSON: {city, street, establishment}
+
+  // Numéro de l'agent (pour Mobile Money)
+  phoneNumber     String?
+
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  orders          Order[]
+
+  @@unique([employeeId, bookmakerId, paymentMethodId, country])
+  @@index([employeeId])
+  @@index([bookmakerId])
+  @@index([paymentMethodId])
+  @@index([country])
+  @@index([isActive])
+}
+
+// ==================== COMMANDES ====================
+
+model Order {
+  id                        String   @id @default(uuid())
+  type                      String   // DEPOT, RETRAIT
+  amount                    Float
+  fees                      Float    @default(0)
+  state                     String   @default("COMING") // COMING, CONFIRMED, CANCELLED
+
+  // Références transaction
+  referenceId               String?  // Référence SMS (dépôt) ou Code retrait (retrait)
+  bookmakerIdentifier       String?  // ID bookmaker du client
+  clientContact             String   // Téléphone du client pour la transaction
+
+  // Relations
+  clientId                  String
+  client                    User     @relation(fields: [clientId], references: [id])
+
+  bookmakerId               String
+  bookmaker                 Bookmaker @relation(fields: [bookmakerId], references: [id])
+
+  employeePaymentMethodId   String
+  employeePaymentMethod     EmployeePaymentMethod @relation(fields: [employeePaymentMethodId], references: [id])
+
+  // Timestamps
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+  confirmedAt               DateTime?
+  cancelledAt               DateTime?
+
+  // Raison d'annulation
+  cancellationReason        String?
+
+  @@index([clientId])
+  @@index([state])
+  @@index([type])
+  @@index([createdAt])
+}
+
+// ==================== IDENTIFIANTS BOOKMAKER ====================
+
+model BookmakerIdentifier {
+  id          String    @id @default(uuid())
+  clientId    String
+  client      User      @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  bookmakerId String
+  bookmaker   Bookmaker @relation(fields: [bookmakerId], references: [id], onDelete: Cascade)
+
+  identifier  String    // L'ID bookmaker
+  label       String?   // Nom personnalisé (optionnel)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([clientId, bookmakerId])
+  @@index([clientId])
+}
+
+// ==================== PARRAINAGE ====================
+
+model ReferralCode {
+  id                  String   @id @default(uuid())
+  code                String   @unique
+  withdrawalThreshold Float    @default(2000) // Seuil minimum retrait
+  commissionPercent   Float    @default(5)    // % commission sur dépôts filleuls
+  isActive            Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model ReferralWithdrawal {
+  id              String   @id @default(uuid())
+  clientId        String
+  client          User     @relation(fields: [clientId], references: [id])
+
+  amount          Float
+  phoneNumber     String   // Numéro pour le retrait
+  state           String   @default("PENDING") // PENDING, COMPLETED, REJECTED
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  processedAt     DateTime?
+
+  @@index([clientId])
+  @@index([state])
+}
+
+// ==================== CHAT ====================
+
+model ChatConversation {
+  id          String   @id @default(uuid())
+
+  clientId    String
+  client      User     @relation("ClientConversations", fields: [clientId], references: [id])
+
+  agentId     String?  // null si conversation avec support général
+  agent       User?    @relation("AgentConversations", fields: [agentId], references: [id])
+
+  type        String   @default("SUPPORT") // SUPPORT, AGENT
+
+  lastMessageAt DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  messages    ChatMessage[]
+
+  @@index([clientId])
+  @@index([agentId])
+  @@index([lastMessageAt])
+}
+
+model ChatMessage {
+  id              String           @id @default(uuid())
+
+  conversationId  String
+  conversation    ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  senderId        String
+  sender          User             @relation("SenderMessages", fields: [senderId], references: [id])
+
+  content         String
+  attachmentUrl   String?          // Image/fichier preuve
+
+  isRead          Boolean          @default(false)
+  createdAt       DateTime         @default(now())
+
+  @@index([conversationId])
+  @@index([createdAt])
+}
+
+// ==================== NOTIFICATIONS ====================
+
+model PushSubscription {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  endpoint    String
+  keys        String   // JSON stringified {p256dh, auth}
+
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, endpoint])
+  @@index([userId])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type      String   // ORDER_STATUS_CHANGED, NEW_MESSAGE, etc.
+  title     String
+  body      String
+  data      String?  // JSON stringified
+
+  isRead    Boolean  @default(false)
+  isSent    Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, isRead])
+  @@index([createdAt])
+}
+
+// ==================== AUDIT LOG ====================
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+
+  action      String   // LOGIN, CREATE_ORDER, UPDATE_CONFIG, etc.
+  entity      String?  // Order, User, AppConfig, etc.
+  entityId    String?
+  metadata    String?  // JSON
+  ipAddress   String?
+  userAgent   String?
+
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+// ==================== RBAC (Role-Based Access Control) ====================
+
+model Role {
+  id          String   @id @default(uuid())
+  name        String   @unique // Ex: "Gestionnaire Dépôts", "Modérateur Chat", "Éditeur Contenu"
+  description String?
+  isSystem    Boolean  @default(false) // True pour les rôles système (non supprimables)
+
+  createdById String?
+  createdBy   User?    @relation("CreatedRoles", fields: [createdById], references: [id])
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  userRoles   UserRole[]
+  rolePermissions RolePermission[]
+
+  @@index([name])
+  @@index([isSystem])
+}
+
+model Permission {
+  id          String   @id @default(uuid())
+  code        String   @unique // Ex: "orders.validate", "config.theme.edit", "users.ban"
+  name        String   // Nom lisible
+  description String?
+  category    String   // Ex: "orders", "config", "users", "bookmakers", "chat"
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  rolePermissions RolePermission[]
+
+  @@index([category])
+  @@index([code])
+}
+
+model RolePermission {
+  id           String   @id @default(uuid())
+
+  roleId       String
+  role         Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  permissionId String
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  createdAt    DateTime @default(now())
+
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+}
+
+model UserRole {
+  id        String   @id @default(uuid())
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  roleId    String
+  role      Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  assignedAt DateTime @default(now())
+
+  @@unique([userId, roleId])
+  @@index([userId])
+  @@index([roleId])
+}
+
+// ==================== CONFIGURATION VISUELLE FUTURISTE ====================
+
+model ThemeConfig {
+  id          String   @id @default(uuid())
+
+  // Couleurs primaires futuristes
+  primaryColor      String @default("#00f0ff") // Cyan néon
+  secondaryColor    String @default("#ff00ff") // Magenta néon
+  accentColor       String @default("#00ff88") // Vert néon
+  backgroundColor   String @default("#0a0a1f") // Bleu foncé spatial
+  surfaceColor      String @default("#1a1a3f") // Surface sombre
+  textColor         String @default("#ffffff")
+  textSecondary     String @default("#a0a0ff")
+
+  // Effets visuels
+  glowIntensity     Float  @default(0.8) // Intensité des effets lumineux (0-1)
+  animationSpeed    Float  @default(1.0) // Vitesse animations (0.5 = lent, 2 = rapide)
+  particlesEnabled  Boolean @default(true) // Particules d'arrière-plan
+  gradientEnabled   Boolean @default(true) // Dégradés animés
+
+  // Effets d'argent
+  moneyAnimationStyle String @default("rain") // rain, sparkle, flow, pulse
+  moneyColor          String @default("#ffd700") // Or
+  moneyGlow           Boolean @default(true)
+
+  // Logos bookmakers
+  logoAnimationType   String @default("pulse") // pulse, rotate, glow, float
+  logoGlowColor       String @default("#00f0ff")
+
+  // Arrière-plans
+  backgroundType      String @default("gradient") // gradient, particles, video, image, matrix
+  backgroundImage     String?
+  backgroundVideo     String?
+
+  // Typographie
+  fontFamily          String @default("Inter, system-ui") // Police principale
+  fontSizeBase        Int    @default(16) // Taille de base en px
+
+  // Bordures et arrondis
+  borderRadius        Int    @default(12) // Arrondi des éléments en px
+  borderGlow          Boolean @default(true) // Bordures lumineuses
+
+  // Version et timestamp
+  version             Int    @default(1)
+  isActive            Boolean @default(true) // Thème actif
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([isActive])
+}
+
+model UIComponentConfig {
+  id            String   @id @default(uuid())
+
+  componentType String   // Ex: "header", "footer", "depositForm", "bookmakerCard", etc.
+  componentName String   // Nom lisible
+
+  // Configuration JSON complète du composant
+  config        String   // JSON stringified avec toute la config
+
+  // Visibilité
+  isVisible     Boolean  @default(true)
+  order         Int      @default(0) // Ordre d'affichage
+
+  // Conditions d'affichage
+  showForCountries String? // JSON array des pays où afficher
+  showForRoles     String? // JSON array des rôles qui voient le composant
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([componentType])
+  @@index([componentType])
+  @@index([isVisible])
+}
+
+model Newsletter {
+  id          String   @id @default(uuid())
+
+  title       String
+  content     String   // Contenu HTML ou Markdown
+  imageUrl    String?
+
+  // Ciblage
+  targetCountries String? // JSON array
+  targetRoles     String? // JSON array
+
+  // Statut
+  isDraft     Boolean  @default(true)
+  publishedAt DateTime?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([publishedAt])
+  @@index([isDraft])
+}
