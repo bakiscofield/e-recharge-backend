@@ -96,7 +96,7 @@ model AppConfig {
 model Bookmaker {
   id          String   @id @default(uuid())
   name        String
-  logo        String
+  logo        String?
   countries   String   // JSON array: ["TG", "BJ", "CI"]
   isActive    Boolean  @default(true)
   order       Int      @default(0)
@@ -116,7 +116,7 @@ model PaymentMethod {
   id             String   @id @default(uuid())
   type           String   // MOBILE_MONEY, BANK, OTHER
   name           String   // Flooz, TMoney, Visa, etc.
-  logo           String
+  logo           String?
   countries      String   // JSON array
   isActive       Boolean  @default(true)
   order          Int      @default(0)

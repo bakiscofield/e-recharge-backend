@@ -132,7 +132,6 @@ async function main() {
     prisma.bookmaker.create({
       data: {
         name: '1xBet',
-        logo: '/assets/bookmakers/1xbet.png',
         countries: JSON.stringify(['TG', 'BJ', 'CI', 'SN', 'ML']),
         isActive: true,
         order: 1,
@@ -141,7 +140,6 @@ async function main() {
     prisma.bookmaker.create({
       data: {
         name: '22Bet',
-        logo: '/assets/bookmakers/22bet.png',
         countries: JSON.stringify(['TG', 'BJ', 'CI', 'SN']),
         isActive: true,
         order: 2,
@@ -150,7 +148,6 @@ async function main() {
     prisma.bookmaker.create({
       data: {
         name: 'Betwinner',
-        logo: '/assets/bookmakers/betwinner.png',
         countries: JSON.stringify(['TG', 'BJ', 'CI']),
         isActive: true,
         order: 3,
@@ -159,7 +156,6 @@ async function main() {
     prisma.bookmaker.create({
       data: {
         name: 'ParionsSport',
-        logo: '/assets/bookmakers/parionssport.png',
         countries: JSON.stringify(['TG', 'BJ', 'CI', 'SN', 'ML']),
         isActive: true,
         order: 4,
@@ -175,7 +171,6 @@ async function main() {
       data: {
         type: 'MOBILE_MONEY',
         name: 'Flooz (Moov Togo)',
-        logo: '/assets/payments/flooz.png',
         countries: JSON.stringify(['TG']),
         ussdTemplate: '*155*1*{montant}*{numero}#',
         instructions: 'Composez le code USSD et suivez les instructions',
@@ -187,7 +182,6 @@ async function main() {
       data: {
         type: 'MOBILE_MONEY',
         name: 'TMoney (Togocel)',
-        logo: '/assets/payments/tmoney.png',
         countries: JSON.stringify(['TG']),
         ussdTemplate: '*145*1*{montant}*{numero}#',
         instructions: 'Composez le code USSD et suivez les instructions',
@@ -200,7 +194,6 @@ async function main() {
       data: {
         type: 'MOBILE_MONEY',
         name: 'MTN Mobile Money',
-        logo: '/assets/payments/mtn.png',
         countries: JSON.stringify(['BJ', 'CI', 'SN']),
         ussdTemplate: '*133*1*{montant}*{numero}#',
         instructions: 'Composez le code USSD et suivez les instructions',
@@ -212,7 +205,6 @@ async function main() {
       data: {
         type: 'MOBILE_MONEY',
         name: 'Moov Money',
-        logo: '/assets/payments/moov.png',
         countries: JSON.stringify(['BJ', 'CI', 'SN']),
         ussdTemplate: '*555*1*{montant}*{numero}#',
         instructions: 'Composez le code USSD et suivez les instructions',
@@ -224,7 +216,6 @@ async function main() {
       data: {
         type: 'MOBILE_MONEY',
         name: 'Orange Money',
-        logo: '/assets/payments/orange.png',
         countries: JSON.stringify(['BJ', 'CI', 'SN', 'ML']),
         ussdTemplate: '*144*1*{montant}*{numero}#',
         instructions: 'Composez le code USSD et suivez les instructions',
@@ -237,7 +228,6 @@ async function main() {
       data: {
         type: 'BANK',
         name: 'Carte Bancaire (Visa/Mastercard)',
-        logo: '/assets/payments/card.png',
         countries: JSON.stringify(['TG', 'BJ', 'CI', 'SN', 'ML']),
         instructions: 'Validation manuelle via WhatsApp',
         isActive: true,
@@ -248,7 +238,6 @@ async function main() {
       data: {
         type: 'BANK',
         name: 'Virement Bancaire',
-        logo: '/assets/payments/bank.png',
         countries: JSON.stringify(['TG', 'BJ', 'CI', 'SN', 'ML']),
         instructions: 'Validation manuelle via WhatsApp',
         isActive: true,
@@ -260,7 +249,6 @@ async function main() {
       data: {
         type: 'OTHER',
         name: 'Western Union',
-        logo: '/assets/payments/western.png',
         countries: JSON.stringify(['TG', 'BJ', 'CI', 'SN', 'ML']),
         instructions: 'Contactez le support pour les détails',
         isActive: true,
