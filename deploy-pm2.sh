@@ -95,7 +95,7 @@ if [ $? -eq 0 ]; then
     echo ""
     echo -e "${BLUE}📱 Informations:${NC}"
     echo -e "   Nom:     e-recharge-backend"
-    echo -e "   Port:    5001"
+    echo -e "   Port:    5004"
     echo -e "   URL:     https://back_alice.alicebot.online"
     echo ""
     echo -e "${YELLOW}💡 Commandes utiles:${NC}"
