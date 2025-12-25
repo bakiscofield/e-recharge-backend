@@ -2,7 +2,7 @@ module.exports = {
   apps: [
     {
       name: 'e-recharge-backend',
-      script: 'dist/main.js',
+      script: 'dist/src/main.js',
       instances: 1,
       exec_mode: 'cluster',
       env: {
