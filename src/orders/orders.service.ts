@@ -25,10 +25,6 @@ export class OrdersService {
       throw new BadRequestException('Méthode de paiement agent introuvable');
     }
 
-    if (!employeePaymentMethod.employee.isOnline) {
-      throw new BadRequestException('L\'agent n\'est pas en ligne');
-    }
-
     // Créer la commande
     const order = await this.prisma.order.create({
       data: {
