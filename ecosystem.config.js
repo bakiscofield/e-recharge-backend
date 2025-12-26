@@ -2,9 +2,10 @@ module.exports = {
   apps: [
     {
       name: 'e-recharge-backend',
-      script: 'dist/src/main.js',
+      script: './start-pm2.sh',
       instances: 1,
-      exec_mode: 'cluster',
+      exec_mode: 'fork', // fork mode pour utiliser un script shell
+      interpreter: 'bash',
       env: {
         NODE_ENV: 'production',
         PORT: 5004
@@ -18,7 +19,17 @@ module.exports = {
       watch: false,
       env_production: {
         NODE_ENV: 'production'
-      }
+      },
+      // Hooks PM2
+      post_update: [
+        'npm install',
+        'npm run build',
+        'npx prisma generate',
+        'npx prisma migrate deploy'
+      ],
+      // Préserver les variables d'environnement
+      merge_logs: true,
+      combine_logs: true
     }
   ]
 };
