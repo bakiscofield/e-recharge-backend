@@ -46,7 +46,7 @@ mkdir -p logs
 # Build du backend
 echo -e "${BLUE}📦 Build du backend...${NC}"
 npm install
-npm run build
+npx nest build
 if [ $? -ne 0 ]; then
     echo -e "${RED}❌ Erreur lors du build du backend${NC}"
     exit 1
@@ -63,14 +63,14 @@ if [ ! -f "prisma/production.db" ]; then
         export $(cat .env.production | grep -v '^#' | xargs)
     fi
 
-    npm run prisma:generate:prod
-    npm run prisma:migrate:prod
+    npx prisma generate
+    npx prisma migrate deploy
 
     # Demander si on veut peupler la DB
     read -p "Voulez-vous peupler la base de données ? (o/n) " -n 1 -r
     echo
     if [[ $REPLY =~ ^[Oo]$ ]]; then
-        npm run prisma:seed:prod
+        npx prisma db seed
     fi
 
     echo -e "${GREEN}✓ Base de données initialisée${NC}"
