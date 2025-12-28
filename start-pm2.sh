@@ -5,16 +5,16 @@
 
 echo "🔄 Préparation du backend..."
 
+# Régénération du schéma Prisma (EN PREMIER)
+echo "📦 Génération du client Prisma..."
+npx prisma generate
+
 # Charger les variables d'environnement
 if [ -f ".env.production" ]; then
     export $(cat .env.production | grep -v '^#' | xargs)
 elif [ -f ".env" ]; then
     export $(cat .env | grep -v '^#' | xargs)
 fi
-
-# Régénération du schéma Prisma
-echo "📦 Génération du client Prisma..."
-npx prisma generate
 
 # Synchronisation avec la base de données (migrations)
 echo "🔄 Application des migrations Prisma..."
