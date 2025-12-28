@@ -46,6 +46,7 @@ mkdir -p logs
 # Build du backend
 echo -e "${BLUE}📦 Build du backend...${NC}"
 npm install
+npm install --save-dev typescript @types/node
 npx prisma generate
 npx tsc
 if [ $? -ne 0 ]; then
