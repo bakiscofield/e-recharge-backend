@@ -27,10 +27,10 @@ if [ ! -f "package.json" ]; then
     exit 1
 fi
 
-# Vérifier que le fichier .env existe
-if [ ! -f ".env" ]; then
-    echo -e "${RED}❌ Fichier .env non trouvé${NC}"
-    echo -e "${YELLOW}💡 Créez le fichier .env avec vos variables${NC}"
+# Vérifier que le fichier .env.production existe
+if [ ! -f ".env.production" ]; then
+    echo -e "${RED}❌ Fichier .env.production non trouvé${NC}"
+    echo -e "${YELLOW}💡 Créez le fichier .env.production avec vos variables${NC}"
     exit 1
 fi
 
@@ -70,8 +70,8 @@ echo -e "${BLUE}🔧 Démarrage du service PM2...${NC}"
 pm2 delete e-recharge-backend 2>/dev/null
 
 # Charger les variables d'environnement et démarrer avec PM2
-export $(cat .env | grep -v '^#' | xargs)
-pm2 start ecosystem.config.js -.env
+export $(cat .env.production | grep -v '^#' | xargs)
+pm2 start ecosystem.config.js --env production
 
 if [ $? -eq 0 ]; then
     echo ""
