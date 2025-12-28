@@ -46,7 +46,8 @@ mkdir -p logs
 # Build du backend
 echo -e "${BLUE}📦 Build du backend...${NC}"
 npm install
-npx nest build
+npx prisma generate
+npx tsc
 if [ $? -ne 0 ]; then
     echo -e "${RED}❌ Erreur lors du build du backend${NC}"
     exit 1
