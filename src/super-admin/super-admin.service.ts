@@ -575,4 +575,143 @@ export class SuperAdminService {
       pages: Math.ceil(total / take),
     };
   }
+
+  // ==================== CONFIGURATION PARRAINAGE ====================
+
+  async getReferralConfig() {
+    const config = await this.prisma.referralCode.findFirst({
+      where: { isActive: true },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    // Si aucune config, créer une config par défaut
+    if (!config) {
+      return this.prisma.referralCode.create({
+        data: {
+          code: 'DEFAULT',
+          commissionPercent: 5,
+          commissionType: 'ALL_DEPOSITS',
+          withdrawalThreshold: 2000,
+          isActive: true,
+        },
+      });
+    }
+
+    return config;
+  }
+
+  async updateReferralConfig(data: {
+    commissionPercent: number;
+    commissionType: string;
+    withdrawalThreshold: number;
+  }) {
+    // Vérifier les valeurs
+    if (data.commissionPercent < 0 || data.commissionPercent > 100) {
+      throw new BadRequestException('Le pourcentage de commission doit être entre 0 et 100');
+    }
+
+    if (!['FIRST_DEPOSIT', 'ALL_DEPOSITS'].includes(data.commissionType)) {
+      throw new BadRequestException('Type de commission invalide');
+    }
+
+    if (data.withdrawalThreshold < 0) {
+      throw new BadRequestException('Le seuil de retrait doit être positif');
+    }
+
+    const config = await this.getReferralConfig();
+
+    return this.prisma.referralCode.update({
+      where: { id: config.id },
+      data: {
+        commissionPercent: data.commissionPercent,
+        commissionType: data.commissionType,
+        withdrawalThreshold: data.withdrawalThreshold,
+      },
+    });
+  }
+
+  // ==================== GESTION DES BOOKMAKERS ====================
+
+  async getAllBookmakers() {
+    return this.prisma.bookmaker.findMany({
+      orderBy: [{ order: 'asc' }, { name: 'asc' }],
+    });
+  }
+
+  async createBookmaker(data: {
+    name: string;
+    countries: string[];
+    logo?: string;
+    order?: number;
+  }) {
+    return this.prisma.bookmaker.create({
+      data: {
+        name: data.name,
+        countries: JSON.stringify(data.countries),
+        logo: data.logo,
+        order: data.order || 0,
+        isActive: true,
+      },
+    });
+  }
+
+  async updateBookmaker(
+    id: string,
+    data: {
+      name?: string;
+      countries?: string[];
+      logo?: string;
+      order?: number;
+      isActive?: boolean;
+    },
+  ) {
+    const bookmaker = await this.prisma.bookmaker.findUnique({ where: { id } });
+    if (!bookmaker) {
+      throw new NotFoundException('Bookmaker introuvable');
+    }
+
+    const updateData: any = {};
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.countries !== undefined) updateData.countries = JSON.stringify(data.countries);
+    if (data.logo !== undefined) updateData.logo = data.logo;
+    if (data.order !== undefined) updateData.order = data.order;
+    if (data.isActive !== undefined) updateData.isActive = data.isActive;
+
+    return this.prisma.bookmaker.update({
+      where: { id },
+      data: updateData,
+    });
+  }
+
+  async toggleBookmakerStatus(id: string) {
+    const bookmaker = await this.prisma.bookmaker.findUnique({ where: { id } });
+    if (!bookmaker) {
+      throw new NotFoundException('Bookmaker introuvable');
+    }
+
+    return this.prisma.bookmaker.update({
+      where: { id },
+      data: { isActive: !bookmaker.isActive },
+    });
+  }
+
+  async deleteBookmaker(id: string) {
+    const bookmaker = await this.prisma.bookmaker.findUnique({ where: { id } });
+    if (!bookmaker) {
+      throw new NotFoundException('Bookmaker introuvable');
+    }
+
+    // Vérifier qu'il n'y a pas de commandes liées
+    const ordersCount = await this.prisma.order.count({
+      where: { bookmakerId: id },
+    });
+
+    if (ordersCount > 0) {
+      throw new BadRequestException(
+        'Impossible de supprimer ce bookmaker car il a des commandes associées',
+      );
+    }
+
+    return this.prisma.bookmaker.delete({ where: { id } });
+  }
 }

@@ -21,6 +21,8 @@ export interface ThemeConfigData {
   backgroundType?: string;
   backgroundImage?: string;
   backgroundVideo?: string;
+  clientBackgroundType?: string;
+  clientBackgroundImage?: string;
   fontFamily?: string;
   fontSizeBase?: number;
   borderRadius?: number;

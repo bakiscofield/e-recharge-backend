@@ -17,6 +17,7 @@ import { SuperAdminModule } from './super-admin/super-admin.module';
 import { ThemeModule } from './theme/theme.module';
 import { NewsletterModule } from './newsletter/newsletter.module';
 import { UploadModule } from './upload/upload.module';
+import { AnnouncementsModule } from './announcements/announcements.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { UploadModule } from './upload/upload.module';
     ThemeModule,
     NewsletterModule,
     UploadModule,
+    AnnouncementsModule,
   ],
 })
 export class AppModule {}

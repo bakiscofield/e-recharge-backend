@@ -162,4 +162,61 @@ export class SuperAdminController {
       },
     );
   }
+
+  // ==================== CONFIGURATION PARRAINAGE ====================
+
+  @Get('referral-config')
+  getReferralConfig() {
+    return this.superAdminService.getReferralConfig();
+  }
+
+  @Put('referral-config')
+  updateReferralConfig(@Body() data: {
+    commissionPercent: number;
+    commissionType: string;
+    withdrawalThreshold: number;
+  }) {
+    return this.superAdminService.updateReferralConfig(data);
+  }
+
+  // ==================== GESTION DES BOOKMAKERS ====================
+
+  @Get('bookmakers')
+  getAllBookmakers() {
+    return this.superAdminService.getAllBookmakers();
+  }
+
+  @Post('bookmakers')
+  createBookmaker(@Body() data: {
+    name: string;
+    countries: string[];
+    logo?: string;
+    order?: number;
+  }) {
+    return this.superAdminService.createBookmaker(data);
+  }
+
+  @Put('bookmakers/:id')
+  updateBookmaker(
+    @Param('id') id: string,
+    @Body() data: {
+      name?: string;
+      countries?: string[];
+      logo?: string;
+      order?: number;
+      isActive?: boolean;
+    },
+  ) {
+    return this.superAdminService.updateBookmaker(id, data);
+  }
+
+  @Put('bookmakers/:id/toggle-status')
+  toggleBookmakerStatus(@Param('id') id: string) {
+    return this.superAdminService.toggleBookmakerStatus(id);
+  }
+
+  @Delete('bookmakers/:id')
+  deleteBookmaker(@Param('id') id: string) {
+    return this.superAdminService.deleteBookmaker(id);
+  }
 }

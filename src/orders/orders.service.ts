@@ -217,29 +217,47 @@ export class OrdersService {
         });
 
         if (referralCode) {
-          const commission = (order.amount * referralCode.commissionPercent) / 100;
+          let shouldGiveCommission = true;
 
-          const referrer = await this.prisma.user.findUnique({
-            where: { referralCode: client.referredBy },
-          });
-
-          if (referrer) {
-            await this.prisma.user.update({
-              where: { id: referrer.id },
-              data: {
-                referralBalance: {
-                  increment: commission,
-                },
+          // Si le type de commission est FIRST_DEPOSIT, vérifier si c'est le premier dépôt
+          if (referralCode.commissionType === 'FIRST_DEPOSIT') {
+            const previousDeposits = await this.prisma.order.count({
+              where: {
+                clientId: order.clientId,
+                type: 'DEPOT',
+                state: 'CONFIRMED',
+                id: { not: order.id }, // Exclure la commande actuelle
               },
             });
 
-            await this.notificationsService.create({
-              userId: referrer.id,
-              type: 'REFERRAL_COMMISSION',
-              title: 'Commission de parrainage',
-              body: `Vous avez reçu ${commission} FCFA de commission`,
-              data: JSON.stringify({ orderId: order.id, commission }),
+            shouldGiveCommission = previousDeposits === 0;
+          }
+
+          if (shouldGiveCommission) {
+            const commission = (order.amount * referralCode.commissionPercent) / 100;
+
+            const referrer = await this.prisma.user.findUnique({
+              where: { referralCode: client.referredBy },
             });
+
+            if (referrer) {
+              await this.prisma.user.update({
+                where: { id: referrer.id },
+                data: {
+                  referralBalance: {
+                    increment: commission,
+                  },
+                },
+              });
+
+              await this.notificationsService.create({
+                userId: referrer.id,
+                type: 'REFERRAL_COMMISSION',
+                title: 'Commission de parrainage',
+                body: `Vous avez reçu ${commission} FCFA de commission`,
+                data: JSON.stringify({ orderId: order.id, commission }),
+              });
+            }
           }
         }
       }

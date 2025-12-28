@@ -243,6 +243,7 @@ model ReferralCode {
   code                String   @unique
   withdrawalThreshold Float    @default(2000) // Seuil minimum retrait
   commissionPercent   Float    @default(5)    // % commission sur dépôts filleuls
+  commissionType      String   @default("ALL_DEPOSITS") // FIRST_DEPOSIT ou ALL_DEPOSITS
   isActive            Boolean  @default(true)
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
@@ -466,6 +467,10 @@ model ThemeConfig {
   backgroundImage     String?
   backgroundVideo     String?
 
+  // Arrière-plan client spécifique
+  clientBackgroundType String @default("animation") // animation, image
+  clientBackgroundImage String? // Image de fond pour les pages clients
+
   // Typographie
   fontFamily          String @default("Inter, system-ui") // Police principale
   fontSizeBase        Int    @default(16) // Taille de base en px
@@ -529,4 +534,29 @@ model Newsletter {
 
   @@index([publishedAt])
   @@index([isDraft])
+}
+
+// ==================== ANNONCES ====================
+
+model Announcement {
+  id          String   @id @default(uuid())
+
+  title       String   // Titre de l'annonce
+  fileUrl     String   // URL du fichier (image ou PDF)
+  fileType    String   // IMAGE ou PDF
+  fileName    String   // Nom original du fichier
+  fileSize    Int      // Taille en bytes
+
+  // Type d'affichage
+  displayType String   // ONCE (une seule fois) ou DAILY (quotidien)
+
+  // Statut
+  isActive    Boolean  @default(true)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([displayType])
+  @@index([createdAt])
 }

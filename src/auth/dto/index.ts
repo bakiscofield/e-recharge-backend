@@ -78,7 +78,7 @@ export class VerifyEmailCodeDto {
   @IsEmail()
   email: string;
 
-  @ApiProperty({ description: 'Code à 4 chiffres' })
+  @ApiProperty({ description: 'Code à 6 chiffres' })
   @IsString()
   code: string;
 }

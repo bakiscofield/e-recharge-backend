@@ -34,8 +34,9 @@ export class UploadController {
       throw new BadRequestException('Aucun fichier fourni');
     }
 
-    // Retourne l'URL accessible publiquement
-    const fileUrl = `/uploads/${file.filename}`;
+    // Retourne l'URL complète accessible publiquement (avec l'URL du backend)
+    const appUrl = process.env.APP_URL || 'http://localhost:3001';
+    const fileUrl = `${appUrl}/uploads/${file.filename}`;
 
     return {
       url: fileUrl,

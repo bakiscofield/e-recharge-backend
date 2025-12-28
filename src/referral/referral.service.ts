@@ -22,6 +22,32 @@ export class ReferralService {
     };
   }
 
+  async validateCode(code: string) {
+    // Rechercher l'utilisateur qui possède ce code de parrainage
+    const owner = await this.prisma.user.findUnique({
+      where: { referralCode: code },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        referralCode: true,
+      },
+    });
+
+    if (!owner) {
+      return {
+        valid: false,
+        message: 'Code promo invalide',
+      };
+    }
+
+    return {
+      valid: true,
+      ownerName: `${owner.firstName} ${owner.lastName}`,
+      message: 'Code promo valide',
+    };
+  }
+
   async getBalance(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },

@@ -30,10 +30,13 @@ export class AuthService {
 
   // Inscription classique (email + password)
   async register(dto: RegisterDto) {
+    // Normaliser le numéro de téléphone
+    const normalizedPhone = this.normalizePhoneNumber(dto.phone);
+
     // Vérifier si l'utilisateur existe déjà
     const existingUser = await this.prisma.user.findFirst({
       where: {
-        OR: [{ email: dto.email }, { phone: dto.phone }],
+        OR: [{ email: dto.email }, { phone: normalizedPhone }],
       },
     });
 
@@ -41,15 +44,18 @@ export class AuthService {
       throw new ConflictException('Email ou téléphone déjà utilisé');
     }
 
-    // Vérifier le code parrainage si fourni
+    // Vérifier le code promo si fourni (optionnel - ne bloque pas l'inscription)
+    let validReferredBy: string | null = null;
     if (dto.referredBy) {
-      const referralCode = await this.prisma.referralCode.findUnique({
-        where: { code: dto.referredBy, isActive: true },
+      // Vérifier si le code appartient à un utilisateur existant
+      const referrer = await this.prisma.user.findUnique({
+        where: { referralCode: dto.referredBy },
       });
 
-      if (!referralCode) {
-        throw new BadRequestException('Code parrainage invalide');
+      if (referrer) {
+        validReferredBy = dto.referredBy;
       }
+      // Si le code est invalide, on l'ignore simplement (pas d'erreur - inscription continue)
     }
 
     // Hash password
@@ -60,17 +66,17 @@ export class AuthService {
     // Générer un code parrainage unique
     const referralCode = await this.generateUniqueReferralCode();
 
-    // Créer l'utilisateur
+    // Créer l'utilisateur (utiliser seulement le code valide)
     const user = await this.prisma.user.create({
       data: {
         email: dto.email,
-        phone: dto.phone,
+        phone: normalizedPhone,
         password: hashedPassword,
         firstName: dto.firstName,
         lastName: dto.lastName,
         country: dto.country,
         referralCode,
-        referredBy: dto.referredBy,
+        referredBy: validReferredBy, // Seulement si le code est valide, sinon null
       },
     });
 
@@ -85,9 +91,15 @@ export class AuthService {
 
   // Connexion classique (email/phone + password)
   async login(dto: LoginDto) {
+    // Normaliser si c'est un numéro de téléphone
+    const normalizedIdentifier = this.normalizePhoneNumber(dto.identifier);
+
     const user = await this.prisma.user.findFirst({
       where: {
-        OR: [{ email: dto.identifier }, { phone: dto.identifier }],
+        OR: [
+          { email: dto.identifier },
+          { phone: normalizedIdentifier },
+        ],
       },
     });
 
@@ -110,6 +122,9 @@ export class AuthService {
 
   // Envoyer OTP
   async sendOtp(dto: SendOtpDto) {
+    // Normaliser le numéro de téléphone
+    const normalizedPhone = this.normalizePhoneNumber(dto.phone);
+
     const code = this.generateOtpCode();
     const expiresAt = new Date(
       Date.now() + parseInt(process.env.OTP_EXPIRES_IN || '300') * 1000,
@@ -118,13 +133,13 @@ export class AuthService {
     // Sauvegarder l'OTP
     await this.prisma.otpCode.create({
       data: {
-        phone: dto.phone,
+        phone: normalizedPhone,
         code,
         expiresAt,
       },
     });
 
-    // Envoyer le SMS
+    // Envoyer le SMS (utiliser le numéro original pour l'envoi)
     await this.smsService.sendOtp(dto.phone, code);
 
     return {
@@ -135,9 +150,12 @@ export class AuthService {
 
   // Vérifier OTP
   async verifyOtp(dto: VerifyOtpDto) {
+    // Normaliser le numéro de téléphone
+    const normalizedPhone = this.normalizePhoneNumber(dto.phone);
+
     const otpRecord = await this.prisma.otpCode.findFirst({
       where: {
-        phone: dto.phone,
+        phone: normalizedPhone,
         code: dto.code,
         verified: false,
         expiresAt: {
@@ -161,10 +179,13 @@ export class AuthService {
 
   // Connexion avec OTP (après vérification)
   async loginWithOtp(dto: LoginWithOtpDto) {
+    // Normaliser le numéro de téléphone
+    const normalizedPhone = this.normalizePhoneNumber(dto.phone);
+
     // Vérifier que l'OTP a été vérifié
     const otpRecord = await this.prisma.otpCode.findFirst({
       where: {
-        phone: dto.phone,
+        phone: normalizedPhone,
         code: dto.code,
         verified: true,
       },
@@ -179,7 +200,7 @@ export class AuthService {
 
     // Récupérer ou créer l'utilisateur
     let user = await this.prisma.user.findUnique({
-      where: { phone: dto.phone },
+      where: { phone: normalizedPhone },
     });
 
     if (!user) {
@@ -190,16 +211,27 @@ export class AuthService {
         );
       }
 
+      // Vérifier le code promo si fourni (optionnel)
+      let validReferredBy: string | null = null;
+      if (dto.referredBy) {
+        const referrer = await this.prisma.user.findUnique({
+          where: { referralCode: dto.referredBy },
+        });
+        if (referrer) {
+          validReferredBy = dto.referredBy;
+        }
+      }
+
       const referralCode = await this.generateUniqueReferralCode();
 
       user = await this.prisma.user.create({
         data: {
-          phone: dto.phone,
+          phone: normalizedPhone,
           firstName: dto.firstName,
           lastName: dto.lastName,
           country: dto.country,
           referralCode,
-          referredBy: dto.referredBy,
+          referredBy: validReferredBy, // Seulement si valide
           isVerified: true,
         },
       });
@@ -245,7 +277,7 @@ export class AuthService {
     let exists = true;
 
     while (exists) {
-      code = this.generateRandomCode(8);
+      code = this.generateRandomCode(5);
       const user = await this.prisma.user.findUnique({
         where: { referralCode: code },
       });
@@ -348,6 +380,9 @@ export class AuthService {
 
   // Inscription complète avec email vérifié
   async registerWithEmail(dto: RegisterWithEmailDto) {
+    // Normaliser le numéro de téléphone
+    const normalizedPhone = this.normalizePhoneNumber(dto.phone);
+
     // Vérifier que l'email est déjà vérifié
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
@@ -359,11 +394,22 @@ export class AuthService {
 
     // Vérifier que le téléphone n'existe pas
     const existingPhone = await this.prisma.user.findUnique({
-      where: { phone: dto.phone },
+      where: { phone: normalizedPhone },
     });
 
     if (existingPhone) {
       throw new ConflictException('Ce numéro de téléphone est déjà utilisé');
+    }
+
+    // Vérifier le code promo si fourni (optionnel)
+    let validReferredBy: string | null = null;
+    if (dto.referredBy) {
+      const referrer = await this.prisma.user.findUnique({
+        where: { referralCode: dto.referredBy },
+      });
+      if (referrer) {
+        validReferredBy = dto.referredBy;
+      }
     }
 
     // Hash password
@@ -376,13 +422,13 @@ export class AuthService {
     const updatedUser = await this.prisma.user.update({
       where: { email: dto.email },
       data: {
-        phone: dto.phone,
+        phone: normalizedPhone,
         password: hashedPassword,
         firstName: dto.firstName,
         lastName: dto.lastName,
         country: dto.country,
         referralCode,
-        referredBy: dto.referredBy,
+        referredBy: validReferredBy, // Seulement si valide
         isVerified: true, // Email est déjà vérifié
       },
     });
@@ -396,10 +442,29 @@ export class AuthService {
     };
   }
 
-  // Générer un code à 4 chiffres pour l'email
+  // Générer un code à 6 chiffres pour l'email
   private generateEmailVerificationCode(): string {
-    return Math.floor(Math.random() * 10000)
+    return Math.floor(Math.random() * 1000000)
       .toString()
-      .padStart(4, '0');
+      .padStart(6, '0');
+  }
+
+  // Normaliser un numéro de téléphone (enlever +228 et 228)
+  private normalizePhoneNumber(phone: string): string {
+    if (!phone) return phone;
+
+    // Enlever tous les espaces et caractères non numériques sauf le +
+    let normalized = phone.replace(/[\s\-\(\)]/g, '');
+
+    // Enlever le +228 au début
+    if (normalized.startsWith('+228')) {
+      normalized = normalized.substring(4);
+    }
+    // Enlever le 228 au début (sans le +)
+    else if (normalized.startsWith('228')) {
+      normalized = normalized.substring(3);
+    }
+
+    return normalized;
   }
 }

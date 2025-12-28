@@ -27,6 +27,12 @@ export class ReferralController {
     return this.referralService.checkCode(code);
   }
 
+  @Get('validate/:code')
+  @ApiOperation({ summary: 'Valider un code promo avec informations du parrain' })
+  async validateCode(@Param('code') code: string) {
+    return this.referralService.validateCode(code);
+  }
+
   @Get('balance')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)

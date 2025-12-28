@@ -71,4 +71,11 @@ export class NewsletterController {
   deleteNewsletter(@Param('id') id: string) {
     return this.newsletterService.deleteNewsletter(id);
   }
+
+  @Post(':id/send')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('newsletters.send')
+  sendNewsletter(@Param('id') id: string) {
+    return this.newsletterService.sendNewsletter(id);
+  }
 }
