@@ -93,7 +93,7 @@ export class AuthService {
   async login(dto: LoginDto) {
     // Normaliser si c'est un numéro de téléphone
     const normalizedIdentifier = this.normalizePhoneNumber(dto.identifier);
-
+    
     const user = await this.prisma.user.findFirst({
       where: {
         OR: [
@@ -102,15 +102,21 @@ export class AuthService {
         ],
       },
     });
-
+    
     if (!user || !user.password) {
       throw new UnauthorizedException('Identifiants invalides');
     }
-
+    console.log(dto);
+    
     const isPasswordValid = await bcrypt.compare(dto.password, user.password);
+    console.log(isPasswordValid);
+    
     if (!isPasswordValid) {
       throw new UnauthorizedException('Identifiants invalides');
     }
+
+    console.log(user);
+    
 
     const token = this.generateToken(user);
 

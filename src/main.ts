@@ -7,11 +7,21 @@ import { join } from 'path';
 import * as express from 'express';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, {
-    cors: {
-      origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-      credentials: true,
-    },
+  // Configure CORS
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const allowedOrigins = [frontendUrl, process.env.BACKEND_URL].filter(
+    (url): url is string => !!url,
+  );
+
+  const app = await NestFactory.create(AppModule);
+
+  // Enable CORS
+  app.enableCors({
+    origin: allowedOrigins,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    optionsSuccessStatus: 200,
   });
 
   // Serve static files (uploaded images) - BEFORE helmet
