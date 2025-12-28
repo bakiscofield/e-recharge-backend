@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Script de déploiement PM2 pour E-Recharge Backend
-# Lance uniquement le backend sur le port 5001
+# Lance uniquement le backend sur le port 5004
 
 echo "🚀 Déploiement E-Recharge Backend avec PM2..."
 echo ""
@@ -43,40 +43,26 @@ fi
 # Créer le dossier de logs s'il n'existe pas
 mkdir -p logs
 
-# Build du backend
-echo -e "${BLUE}📦 Build du backend...${NC}"
-NODE_ENV=development npm install
+# Générer le client Prisma
+echo -e "${BLUE}🗄️  Génération du client Prisma...${NC}"
 npx prisma generate
-npx tsc
+if [ $? -ne 0 ]; then
+    echo -e "${RED}❌ Erreur lors de la génération Prisma${NC}"
+    exit 1
+fi
+echo -e "${GREEN}✓ Client Prisma généré${NC}"
+echo ""
+
+# Build du backend
+echo -e "${BLUE}📦 Build du backend NestJS...${NC}"
+npm install
+npm run build
 if [ $? -ne 0 ]; then
     echo -e "${RED}❌ Erreur lors du build du backend${NC}"
     exit 1
 fi
 echo -e "${GREEN}✓ Backend build réussi${NC}"
 echo ""
-
-# Initialiser la base de données si nécessaire
-if [ ! -f "prisma/production.db" ]; then
-    echo -e "${BLUE}🗄️  Initialisation de la base de données...${NC}"
-
-    # Charger les variables d'environnement depuis .env.production
-    if [ -f ".env.production" ]; then
-        export $(cat .env.production | grep -v '^#' | xargs)
-    fi
-
-    npx prisma generate
-    npx prisma migrate deploy
-
-    # Demander si on veut peupler la DB
-    read -p "Voulez-vous peupler la base de données ? (o/n) " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Oo]$ ]]; then
-        npx prisma db seed
-    fi
-
-    echo -e "${GREEN}✓ Base de données initialisée${NC}"
-    echo ""
-fi
 
 echo -e "${BLUE}🔧 Démarrage du service PM2...${NC}"
 
