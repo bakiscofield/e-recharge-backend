@@ -65,7 +65,7 @@ sqlite3 "$PROD_DB" << 'EOF'
 .mode column
 .headers on
 SELECT
-    'Users' as Table, COUNT(*) as Count FROM User
+    'Users' as TableName, COUNT(*) as Count FROM User
 UNION ALL
 SELECT 'Orders', COUNT(*) FROM "Order"
 UNION ALL
@@ -109,7 +109,7 @@ sqlite3 "$PROD_DB" << 'EOF'
 .mode column
 .headers on
 SELECT
-    'Users' as Table, COUNT(*) as Count FROM User
+    'Users' as TableName, COUNT(*) as Count FROM User
 UNION ALL
 SELECT 'Orders', COUNT(*) FROM "Order"
 UNION ALL
