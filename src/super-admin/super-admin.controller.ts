@@ -44,6 +44,65 @@ export class SuperAdminController {
     return this.superAdminService.deleteAdmin(id);
   }
 
+  @Put('admins/:id')
+  updateAdmin(@Param('id') id: string, @Body() data: {
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
+    email?: string;
+  }) {
+    return this.superAdminService.updateAdmin(id, data);
+  }
+
+  @Put('admins/:id/status')
+  updateAdminStatus(@Param('id') id: string, @Body() data: { isActive: boolean }) {
+    return this.superAdminService.updateAdminStatus(id, data.isActive);
+  }
+
+  // ==================== GESTION DES AGENTS ====================
+
+  @Post('agents')
+  createAgent(@Body() data: {
+    email?: string;
+    phone: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+    country: string;
+  }) {
+    return this.superAdminService.createAgent(data);
+  }
+
+  @Get('agents')
+  getAllAgents() {
+    return this.superAdminService.getAllAgents();
+  }
+
+  @Get('agents/:id')
+  getAgent(@Param('id') id: string) {
+    return this.superAdminService.getAgent(id);
+  }
+
+  @Put('agents/:id')
+  updateAgent(@Param('id') id: string, @Body() data: {
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
+    email?: string;
+  }) {
+    return this.superAdminService.updateAgent(id, data);
+  }
+
+  @Put('agents/:id/status')
+  updateAgentStatus(@Param('id') id: string, @Body() data: { isActive: boolean }) {
+    return this.superAdminService.updateAgentStatus(id, data.isActive);
+  }
+
+  @Delete('agents/:id')
+  deleteAgent(@Param('id') id: string) {
+    return this.superAdminService.deleteAgent(id);
+  }
+
   // ==================== GESTION DES UTILISATEURS ====================
 
   @Get('users')

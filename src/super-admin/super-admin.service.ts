@@ -159,6 +159,262 @@ export class SuperAdminService {
     return this.prisma.user.delete({ where: { id } });
   }
 
+  async updateAdmin(id: string, data: {
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
+    email?: string;
+  }) {
+    const admin = await this.prisma.user.findUnique({ where: { id } });
+    if (!admin || admin.role !== 'ADMIN') {
+      throw new NotFoundException('Admin introuvable');
+    }
+
+    if (admin.isSuperAdmin) {
+      throw new BadRequestException('Impossible de modifier le Super Admin');
+    }
+
+    return this.prisma.user.update({
+      where: { id },
+      data,
+      select: {
+        id: true,
+        email: true,
+        phone: true,
+        firstName: true,
+        lastName: true,
+        country: true,
+        role: true,
+        isActive: true,
+        createdAt: true,
+      },
+    });
+  }
+
+  async updateAdminStatus(id: string, isActive: boolean) {
+    const admin = await this.prisma.user.findUnique({ where: { id } });
+    if (!admin || admin.role !== 'ADMIN') {
+      throw new NotFoundException('Admin introuvable');
+    }
+
+    if (admin.isSuperAdmin) {
+      throw new BadRequestException('Impossible de modifier le statut du Super Admin');
+    }
+
+    return this.prisma.user.update({
+      where: { id },
+      data: { isActive },
+    });
+  }
+
+  // ==================== GESTION DES AGENTS ====================
+
+  async createAgent(data: {
+    email?: string;
+    phone: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+    country: string;
+  }) {
+    // Vérifier si l'utilisateur existe déjà
+    const existing = await this.prisma.user.findFirst({
+      where: {
+        OR: [
+          { phone: data.phone },
+          { email: data.email },
+        ],
+      },
+    });
+
+    if (existing) {
+      throw new BadRequestException('Un utilisateur avec ce téléphone ou email existe déjà');
+    }
+
+    // Hasher le mot de passe
+    const hashedPassword = await bcrypt.hash(data.password, 10);
+
+    // Créer l'agent
+    const agent = await this.prisma.user.create({
+      data: {
+        email: data.email,
+        phone: data.phone,
+        password: hashedPassword,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        country: data.country,
+        role: 'AGENT',
+        isVerified: true,
+        isActive: true,
+      },
+      select: {
+        id: true,
+        email: true,
+        phone: true,
+        firstName: true,
+        lastName: true,
+        country: true,
+        role: true,
+        isActive: true,
+        createdAt: true,
+      },
+    });
+
+    // Récupérer tous les bookmakers et moyens de paiement actifs
+    const [bookmakers, paymentMethods] = await Promise.all([
+      this.prisma.bookmaker.findMany({
+        where: { isActive: true },
+      }),
+      this.prisma.paymentMethod.findMany({
+        where: { isActive: true },
+      }),
+    ]);
+
+    // Créer les assignations automatiques pour chaque combinaison bookmaker-paiement
+    const assignments: Array<{
+      employeeId: string;
+      bookmakerId: string;
+      paymentMethodId: string;
+      country: string;
+      phoneNumber: string;
+      frais: number;
+      isActive: boolean;
+    }> = [];
+
+    for (const bookmaker of bookmakers) {
+      for (const paymentMethod of paymentMethods) {
+        assignments.push({
+          employeeId: agent.id,
+          bookmakerId: bookmaker.id,
+          paymentMethodId: paymentMethod.id,
+          country: data.country,
+          phoneNumber: data.phone,
+          frais: 0,
+          isActive: true,
+        });
+      }
+    }
+
+    // Insérer toutes les assignations en une seule transaction
+    if (assignments.length > 0) {
+      await this.prisma.employeePaymentMethod.createMany({
+        data: assignments,
+      });
+    }
+
+    return {
+      ...agent,
+      assignmentsCreated: assignments.length,
+    };
+  }
+
+  async getAllAgents() {
+    return this.prisma.user.findMany({
+      where: {
+        role: 'AGENT',
+      },
+      select: {
+        id: true,
+        email: true,
+        phone: true,
+        firstName: true,
+        lastName: true,
+        country: true,
+        role: true,
+        isActive: true,
+        isOnline: true,
+        lastSeen: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async getAgent(id: string) {
+    const agent = await this.prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        email: true,
+        phone: true,
+        firstName: true,
+        lastName: true,
+        country: true,
+        role: true,
+        isActive: true,
+        isOnline: true,
+        lastSeen: true,
+        createdAt: true,
+      },
+    });
+
+    if (!agent || agent.role !== 'AGENT') {
+      throw new NotFoundException('Agent introuvable');
+    }
+
+    return agent;
+  }
+
+  async updateAgent(id: string, data: {
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
+    email?: string;
+  }) {
+    const agent = await this.prisma.user.findUnique({ where: { id } });
+    if (!agent || agent.role !== 'AGENT') {
+      throw new NotFoundException('Agent introuvable');
+    }
+
+    return this.prisma.user.update({
+      where: { id },
+      data,
+      select: {
+        id: true,
+        email: true,
+        phone: true,
+        firstName: true,
+        lastName: true,
+        country: true,
+        role: true,
+        isActive: true,
+        createdAt: true,
+      },
+    });
+  }
+
+  async updateAgentStatus(id: string, isActive: boolean) {
+    const agent = await this.prisma.user.findUnique({ where: { id } });
+    if (!agent || agent.role !== 'AGENT') {
+      throw new NotFoundException('Agent introuvable');
+    }
+
+    return this.prisma.user.update({
+      where: { id },
+      data: { isActive },
+    });
+  }
+
+  async deleteAgent(id: string) {
+    const agent = await this.prisma.user.findUnique({ where: { id } });
+    if (!agent || agent.role !== 'AGENT') {
+      throw new NotFoundException('Agent introuvable');
+    }
+
+    // Vérifier qu'il n'y a pas d'assignations actives
+    const assignmentsCount = await this.prisma.employeePaymentMethod.count({
+      where: { employeeId: id, isActive: true },
+    });
+
+    if (assignmentsCount > 0) {
+      throw new BadRequestException(
+        'Impossible de supprimer cet agent car il a des assignations actives',
+      );
+    }
+
+    return this.prisma.user.delete({ where: { id } });
+  }
+
   // ==================== GESTION DES UTILISATEURS ====================
 
   async toggleUserStatus(id: string) {
