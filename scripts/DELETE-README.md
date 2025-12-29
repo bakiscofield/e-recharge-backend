@@ -4,6 +4,24 @@
 
 ---
 
+## 💡 IMPORTANT - Désactivation vs Suppression
+
+### Désactivation (Recommandé) ✅
+- Les utilisateurs ne peuvent plus se connecter
+- Leurs données sont **conservées** (commandes, historique, etc.)
+- **Réversible** - peut être réactivé plus tard
+- **Aucun problème** de contrainte de clé étrangère
+
+### Suppression ❌
+- Les utilisateurs sont **définitivement supprimés**
+- Peut nécessiter la suppression des données liées
+- **Irréversible**
+- Peut causer des erreurs si des données sont liées
+
+**💡 Utilisez la désactivation sauf si vous devez vraiment supprimer !**
+
+---
+
 ## 🗑️ Scripts Disponibles
 
 ### 1. Script Interactif (Recommandé)
@@ -19,13 +37,29 @@ Le script vous demandera :
 2. Affiche la liste des utilisateurs qui seront supprimés
 3. Demande confirmation en tapant "SUPPRIMER"
 
-### 2. Script Rapide - Supprimer tous les Agents
+### 2. Désactiver tous les Agents (Recommandé) ✅
+
+```bash
+./scripts/disable-agents-quick.sh
+```
+
+### 3. Supprimer tous les Agents (Simple)
+
+⚠️ Échouera si les agents ont des données liées (commandes, etc.)
 
 ```bash
 ./scripts/delete-agents-quick.sh
 ```
 
-### 3. Script Rapide - Supprimer tous les Admins
+### 4. Supprimer tous les Agents + Données liées (Destructif) ⚠️
+
+Supprime les agents ET toutes leurs commandes, conversations, etc.
+
+```bash
+./scripts/delete-agents-cascade.sh
+```
+
+### 5. Supprimer tous les Admins
 
 ```bash
 ./scripts/delete-admins-quick.sh
