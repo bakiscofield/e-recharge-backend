@@ -18,8 +18,12 @@ COUNTRY="${6:-TG}"
 
 echo -e "${YELLOW}=== CRÉATION RAPIDE D'UN SUPER ADMIN ===${NC}\n"
 
-# Créer un fichier temporaire avec le script Node.js
-cat > /tmp/create-admin.js << 'ENDOFSCRIPT'
+# Obtenir le chemin du script
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROJECT_DIR="$( cd "$SCRIPT_DIR/.." && pwd )"
+
+# Créer le script Node.js dans le dossier du projet
+cat > "$PROJECT_DIR/.create-super-admin-temp.js" << 'ENDOFSCRIPT'
 const bcrypt = require('bcrypt');
 const { PrismaClient } = require('@prisma/client');
 
@@ -96,8 +100,9 @@ async function main() {
 main();
 ENDOFSCRIPT
 
-# Exécuter le script
-node /tmp/create-admin.js "$EMAIL" "$PHONE" "$PASSWORD" "$FIRSTNAME" "$LASTNAME" "$COUNTRY"
+# Exécuter le script depuis le dossier du projet
+cd "$PROJECT_DIR"
+node .create-super-admin-temp.js "$EMAIL" "$PHONE" "$PASSWORD" "$FIRSTNAME" "$LASTNAME" "$COUNTRY"
 
 if [ $? -eq 0 ]; then
     echo -e "\n${GREEN}✅ Informations de connexion:${NC}"
@@ -108,4 +113,4 @@ if [ $? -eq 0 ]; then
 fi
 
 # Nettoyer
-rm /tmp/create-admin.js
+rm "$PROJECT_DIR/.create-super-admin-temp.js"
