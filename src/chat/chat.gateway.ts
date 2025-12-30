@@ -125,6 +125,32 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
           }
         }
       }
+    } else if (
+      sender &&
+      (sender.role === 'ADMIN' ||
+        sender.role === 'SUPPORT' ||
+        sender.isSuperAdmin)
+    ) {
+      // Si l'expéditeur est un admin/support, notifier le client de la conversation
+      const conversation = await this.prisma.chatConversation.findUnique({
+        where: { id: data.conversationId },
+        include: { client: true },
+      });
+
+      if (conversation && conversation.clientId !== data.senderId) {
+        // Notifier le client
+        await this.notificationsService.create({
+          userId: conversation.clientId,
+          type: 'ADMIN_REPLY',
+          title: 'Réponse du support',
+          body: `${sender.firstName}: ${message.content.substring(0, 50)}${message.content.length > 50 ? '...' : ''}`,
+          data: JSON.stringify({
+            conversationId: data.conversationId,
+            messageId: message.id,
+            senderId: data.senderId,
+          }),
+        });
+      }
     }
 
     return { event: 'message_sent', data: message };

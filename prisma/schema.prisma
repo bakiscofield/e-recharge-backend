@@ -46,6 +46,7 @@ model User {
   bookmakerIds        BookmakerIdentifier[]
   referralWithdrawals ReferralWithdrawal[]
   pushSubscriptions   PushSubscription[]
+  fcmTokens           FcmToken[]
   chatConversationsAsClient ChatConversation[] @relation("ClientConversations")
   chatMessagesAsSender      ChatMessage[]      @relation("SenderMessages")
 
@@ -322,6 +323,27 @@ model PushSubscription {
 
   @@unique([userId, endpoint])
   @@index([userId])
+}
+
+model FcmToken {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  token       String   @unique  // FCM token unique
+  deviceType  String   // WEB, ANDROID, IOS
+  deviceId    String?  // Identifiant unique du device
+  userAgent   String?  // Info navigateur/appareil
+
+  isActive    Boolean  @default(true)
+  lastUsedAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, token])
+  @@index([userId])
+  @@index([isActive])
+  @@index([deviceType])
+  @@index([lastUsedAt])
 }
 
 model Notification {
