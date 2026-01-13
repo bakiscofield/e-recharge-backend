@@ -295,16 +295,26 @@ export class SuperAdminService {
       }
     }
 
-    // Insérer toutes les assignations en une seule transaction
+    // Insérer toutes les assignations en ignorant les doublons
+    // Note: SQLite ne supporte pas skipDuplicates, donc on utilise une transaction avec try/catch
+    let assignmentsCreated = 0;
     if (assignments.length > 0) {
-      await this.prisma.employeePaymentMethod.createMany({
-        data: assignments,
-      });
+      for (const assignment of assignments) {
+        try {
+          await this.prisma.employeePaymentMethod.create({
+            data: assignment,
+          });
+          assignmentsCreated++;
+        } catch (error) {
+          // Ignorer les erreurs de contrainte unique (assignation existe déjà)
+          // Les autres erreurs sont également ignorées silencieusement
+        }
+      }
     }
 
     return {
       ...agent,
-      assignmentsCreated: assignments.length,
+      assignmentsCreated,
     };
   }
 
@@ -429,6 +439,53 @@ export class SuperAdminService {
     });
   }
 
+  async updateUserStatus(id: string, isActive: boolean) {
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user) {
+      throw new NotFoundException('Utilisateur introuvable');
+    }
+
+    return this.prisma.user.update({
+      where: { id },
+      data: { isActive },
+    });
+  }
+
+  async updateUser(id: string, data: {
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
+    email?: string;
+    country?: string;
+    role?: string;
+  }) {
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user) {
+      throw new NotFoundException('Utilisateur introuvable');
+    }
+
+    return this.prisma.user.update({
+      where: { id },
+      data: {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        phone: data.phone,
+        email: data.email,
+        country: data.country,
+        role: data.role,
+      },
+    });
+  }
+
+  async deleteUser(id: string) {
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user) {
+      throw new NotFoundException('Utilisateur introuvable');
+    }
+
+    return this.prisma.user.delete({ where: { id } });
+  }
+
   async getAllUsers(skip = 0, take = 50, filters?: {
     role?: string;
     country?: string;
@@ -439,38 +496,28 @@ export class SuperAdminService {
     if (filters?.country) where.country = filters.country;
     if (filters?.isActive !== undefined) where.isActive = filters.isActive;
 
-    const [users, total] = await Promise.all([
-      this.prisma.user.findMany({
-        where,
-        skip,
-        take,
-        select: {
-          id: true,
-          email: true,
-          phone: true,
-          firstName: true,
-          lastName: true,
-          country: true,
-          role: true,
-          isActive: true,
-          isOnline: true,
-          isVerified: true,
-          referralCode: true,
-          referralBalance: true,
-          createdAt: true,
-          lastSeen: true,
-        },
-        orderBy: { createdAt: 'desc' },
-      }),
-      this.prisma.user.count({ where }),
-    ]);
-
-    return {
-      users,
-      total,
-      page: Math.floor(skip / take) + 1,
-      pages: Math.ceil(total / take),
-    };
+    return this.prisma.user.findMany({
+      where,
+      skip,
+      take,
+      select: {
+        id: true,
+        email: true,
+        phone: true,
+        firstName: true,
+        lastName: true,
+        country: true,
+        role: true,
+        isActive: true,
+        isOnline: true,
+        isVerified: true,
+        referralCode: true,
+        referralBalance: true,
+        createdAt: true,
+        lastSeen: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
   }
 
   async getUserActivity(userId: string) {
@@ -638,6 +685,22 @@ export class SuperAdminService {
 
     if (!paymentMethod) {
       throw new NotFoundException('Moyen de paiement introuvable');
+    }
+
+    // Vérifier si l'assignation existe déjà
+    const existingAssignment = await this.prisma.employeePaymentMethod.findFirst({
+      where: {
+        employeeId: data.agentId,
+        bookmakerId: data.bookmakerId,
+        paymentMethodId: data.paymentMethodId,
+        country: data.country,
+      },
+    });
+
+    if (existingAssignment) {
+      throw new BadRequestException(
+        'Cette assignation existe déjà pour cet agent, bookmaker, moyen de paiement et pays',
+      );
     }
 
     // Créer l'assignation

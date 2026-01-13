@@ -36,6 +36,24 @@ async function bootstrap() {
     console.log(`✅ Created uploads directory: ${uploadsPath}`);
   }
 
+  // Middleware CORS pour les fichiers statiques
+  app.use(
+    '/uploads',
+    (
+      req: express.Request,
+      res: express.Response,
+      next: express.NextFunction,
+    ) => {
+      const origin = req.headers.origin;
+      if (origin && allowedOrigins.includes(origin)) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+      }
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+      res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+      next();
+    },
+  );
+
   app.use('/uploads', express.static(uploadsPath));
 
   // Security - Configure helmet to work with CORS

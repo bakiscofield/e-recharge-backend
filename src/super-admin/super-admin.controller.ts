@@ -124,9 +124,31 @@ export class SuperAdminController {
     );
   }
 
+  @Put('users/:id')
+  updateUser(@Param('id') id: string, @Body() data: {
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
+    email?: string;
+    country?: string;
+    role?: string;
+  }) {
+    return this.superAdminService.updateUser(id, data);
+  }
+
+  @Put('users/:id/status')
+  updateUserStatus(@Param('id') id: string, @Body() data: { isActive: boolean }) {
+    return this.superAdminService.updateUserStatus(id, data.isActive);
+  }
+
   @Put('users/:id/toggle-status')
   toggleUserStatus(@Param('id') id: string) {
     return this.superAdminService.toggleUserStatus(id);
+  }
+
+  @Delete('users/:id')
+  deleteUser(@Param('id') id: string) {
+    return this.superAdminService.deleteUser(id);
   }
 
   @Get('users/:id/activity')
