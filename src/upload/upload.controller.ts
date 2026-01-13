@@ -14,6 +14,13 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 @Controller('upload')
 @UseGuards(JwtAuthGuard)
 export class UploadController {
+  private readonly appUrl: string;
+
+  constructor() {
+    // Utiliser l'URL de l'application depuis les variables d'environnement
+    this.appUrl = process.env.APP_URL || 'http://localhost:3001';
+  }
+
   @Post('image')
   @ApiOperation({ summary: 'Upload une image (logo, favicon, etc.)' })
   @ApiConsumes('multipart/form-data')
@@ -34,8 +41,8 @@ export class UploadController {
       throw new BadRequestException('Aucun fichier fourni');
     }
 
-    // Retourne le chemin relatif (le frontend reconstruira l'URL complète)
-    const fileUrl = `/uploads/${file.filename}`;
+    // Retourne l'URL complète (avec le domaine du backend)
+    const fileUrl = `${this.appUrl}/uploads/${file.filename}`;
 
     console.log(`✅ Image uploaded: ${file.filename} → ${fileUrl}`);
     console.log(`📂 Saved to: ${file.path}`);
