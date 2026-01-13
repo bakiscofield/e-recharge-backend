@@ -20,6 +20,8 @@
     "prisma:studio:prod": "dotenv -e .env.production -- prisma studio",
     "db:setup": "./setup-db.sh",
     "db:setup:prod": "./setup-db.sh production",
+    "fix:urls": "ts-node scripts/fix-upload-urls.ts",
+    "fix:urls:prod": "dotenv -e .env.production -- ts-node scripts/fix-upload-urls.ts",
     "test": "jest",
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },

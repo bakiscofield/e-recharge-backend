@@ -23,6 +23,9 @@ import { AnnouncementsModule } from './announcements/announcements.module';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      envFilePath: process.env.NODE_ENV === 'production'
+        ? '.env.production'
+        : '.env',
     }),
     ThrottlerModule.forRoot([
       {
