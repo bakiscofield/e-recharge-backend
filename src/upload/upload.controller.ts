@@ -34,9 +34,11 @@ export class UploadController {
       throw new BadRequestException('Aucun fichier fourni');
     }
 
-    // Retourne l'URL complète accessible publiquement (avec l'URL du backend)
-    const appUrl = process.env.APP_URL || 'http://localhost:3001';
-    const fileUrl = `${appUrl}/uploads/${file.filename}`;
+    // Retourne le chemin relatif (le frontend reconstruira l'URL complète)
+    const fileUrl = `/uploads/${file.filename}`;
+
+    console.log(`✅ Image uploaded: ${file.filename} → ${fileUrl}`);
+    console.log(`📂 Saved to: ${file.path}`);
 
     return {
       url: fileUrl,
