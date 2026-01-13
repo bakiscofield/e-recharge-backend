@@ -25,9 +25,17 @@ async function bootstrap() {
   });
 
   // Serve static files (uploaded images) - BEFORE helmet
-  // __dirname in compiled code is dist/src, so we need to go up twice to reach project root
-  const uploadsPath = join(__dirname, '..', '..', 'public', 'uploads');
+  // Utiliser un chemin absolu basé sur le répertoire de travail pour être compatible en production
+  const uploadsPath = join(process.cwd(), 'public', 'uploads');
   console.log(`📁 Serving static files from: ${uploadsPath}`);
+
+  // Créer le dossier s'il n'existe pas
+  const fs = require('fs');
+  if (!fs.existsSync(uploadsPath)) {
+    fs.mkdirSync(uploadsPath, { recursive: true });
+    console.log(`✅ Created uploads directory: ${uploadsPath}`);
+  }
+
   app.use('/uploads', express.static(uploadsPath));
 
   // Security - Configure helmet to work with CORS

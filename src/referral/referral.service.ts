@@ -68,6 +68,24 @@ export class ReferralService {
     });
   }
 
+  async getAllWithdrawals(state?: string) {
+    return this.prisma.referralWithdrawal.findMany({
+      where: state ? { state } : undefined,
+      include: {
+        client: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            phone: true,
+            email: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
   async requestWithdrawal(userId: string, dto: RequestWithdrawalDto) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -99,6 +117,7 @@ export class ReferralService {
         clientId: userId,
         amount: dto.amount,
         phoneNumber: dto.phoneNumber,
+        network: dto.network,
       },
     });
 
@@ -112,14 +131,34 @@ export class ReferralService {
       },
     });
 
-    // Notification
+    // Notification au client
     await this.notificationsService.create({
       userId,
-      type: 'WITHDRAWAL_PROCESSED',
-      title: 'Demande de retrait',
-      body: `Votre demande de retrait de ${dto.amount} FCFA a été enregistrée`,
+      type: 'REFERRAL_WITHDRAWAL_REQUESTED',
+      title: 'Demande de retrait enregistrée',
+      body: `Votre demande de retrait de ${dto.amount} FCFA via ${dto.network} a été enregistrée et sera traitée prochainement`,
       data: JSON.stringify({ withdrawalId: withdrawal.id }),
     });
+
+    // Notification au super admin
+    const superAdmins = await this.prisma.user.findMany({
+      where: { isSuperAdmin: true, isActive: true },
+    });
+
+    for (const admin of superAdmins) {
+      await this.notificationsService.create({
+        userId: admin.id,
+        type: 'NEW_REFERRAL_WITHDRAWAL',
+        title: 'Nouvelle demande de retrait',
+        body: `${user.firstName} ${user.lastName} demande un retrait de ${dto.amount} FCFA via ${dto.network}`,
+        data: JSON.stringify({
+          withdrawalId: withdrawal.id,
+          clientId: userId,
+          amount: dto.amount,
+          network: dto.network,
+        }),
+      });
+    }
 
     return withdrawal;
   }
@@ -128,6 +167,7 @@ export class ReferralService {
     withdrawalId: string,
     state: string,
     adminId: string,
+    rejectionReason?: string,
   ) {
     const withdrawal = await this.prisma.referralWithdrawal.findUnique({
       where: { id: withdrawalId },
@@ -147,6 +187,8 @@ export class ReferralService {
       data: {
         state,
         processedAt: new Date(),
+        processedBy: adminId,
+        rejectionReason: state === 'REJECTED' ? rejectionReason : null,
       },
     });
 
@@ -162,19 +204,23 @@ export class ReferralService {
       });
     }
 
-    // Notification
+    // Notification au client
     await this.notificationsService.create({
       userId: withdrawal.clientId,
-      type: 'WITHDRAWAL_PROCESSED',
+      type: 'REFERRAL_WITHDRAWAL_PROCESSED',
       title:
         state === 'COMPLETED'
-          ? 'Retrait effectué'
-          : 'Retrait rejeté',
+          ? 'Retrait effectué ✅'
+          : 'Retrait rejeté ❌',
       body:
         state === 'COMPLETED'
-          ? `Votre retrait de ${withdrawal.amount} FCFA a été effectué`
-          : `Votre retrait de ${withdrawal.amount} FCFA a été rejeté`,
-      data: JSON.stringify({ withdrawalId: withdrawal.id }),
+          ? `Votre retrait de ${withdrawal.amount} FCFA via ${withdrawal.network} au ${withdrawal.phoneNumber} a été effectué avec succès`
+          : `Votre retrait de ${withdrawal.amount} FCFA a été rejeté. ${rejectionReason ? 'Raison: ' + rejectionReason : ''}`,
+      data: JSON.stringify({
+        withdrawalId: withdrawal.id,
+        state,
+        rejectionReason,
+      }),
     });
 
     // Email

@@ -68,8 +68,24 @@ export class ReferralController {
   async processWithdrawal(
     @CurrentUser() user: any,
     @Param('id') id: string,
-    @Body('state') state: string,
+    @Body() body: { state: string; rejectionReason?: string },
   ) {
-    return this.referralService.processWithdrawal(id, state, user.id);
+    return this.referralService.processWithdrawal(
+      id,
+      body.state,
+      user.id,
+      body.rejectionReason,
+    );
+  }
+
+  @Get('withdrawals/all')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'SUPPORT')
+  @ApiOperation({ summary: 'Obtenir toutes les demandes de retrait (Super Admin)' })
+  async getAllWithdrawals(
+    @Query('state') state?: string,
+  ) {
+    return this.referralService.getAllWithdrawals(state);
   }
 }

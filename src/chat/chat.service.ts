@@ -15,6 +15,7 @@ export class ChatService {
         clientId,
         agentId: agentId || null,
         type,
+        status: 'OPEN', // Ne chercher que les conversations ouvertes
       },
       include: {
         client: {
@@ -200,5 +201,75 @@ export class ChatService {
         isRead: true,
       },
     });
+  }
+
+  async closeConversation(conversationId: string, userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    const conversation = await this.prisma.chatConversation.findUnique({
+      where: { id: conversationId },
+    });
+
+    if (!conversation) {
+      throw new Error('Conversation not found');
+    }
+
+    // Vérifier que seul l'agent assigné ou un super admin peut fermer la conversation
+    const canClose =
+      user.isSuperAdmin ||
+      conversation.agentId === userId ||
+      user.role === 'ADMIN' ||
+      user.role === 'SUPPORT';
+
+    if (!canClose) {
+      throw new Error('You do not have permission to close this conversation');
+    }
+
+    return this.prisma.chatConversation.update({
+      where: { id: conversationId },
+      data: { status: 'CLOSED' },
+    });
+  }
+
+  async canSendMessage(conversationId: string, userId: string): Promise<boolean> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      return false;
+    }
+
+    const conversation = await this.prisma.chatConversation.findUnique({
+      where: { id: conversationId },
+    });
+
+    if (!conversation) {
+      return false;
+    }
+
+    // Le client peut toujours envoyer des messages dans sa conversation
+    if (conversation.clientId === userId) {
+      return true;
+    }
+
+    // Super admin peut toujours intervenir
+    if (user.isSuperAdmin) {
+      return true;
+    }
+
+    // Si un agent est assigné, seul cet agent peut répondre
+    if (conversation.agentId) {
+      return conversation.agentId === userId;
+    }
+
+    // Si aucun agent n'est assigné, tout agent/admin/support peut répondre
+    return user.role === 'AGENT' || user.role === 'ADMIN' || user.role === 'SUPPORT';
   }
 }

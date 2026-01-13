@@ -1,4 +1,4 @@
-import { IsString, IsNumber, Min } from 'class-validator';
+import { IsString, IsNumber, Min, IsIn } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class RequestWithdrawalDto {
@@ -10,4 +10,9 @@ export class RequestWithdrawalDto {
   @ApiProperty()
   @IsString()
   phoneNumber: string;
+
+  @ApiProperty({ enum: ['FLOOZ', 'TMONEY'] })
+  @IsString()
+  @IsIn(['FLOOZ', 'TMONEY'])
+  network: string;
 }

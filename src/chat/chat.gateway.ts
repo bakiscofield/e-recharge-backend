@@ -71,6 +71,21 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     },
     @ConnectedSocket() client: Socket,
   ) {
+    // Vérifier les permissions avant d'envoyer le message
+    const canSend = await this.chatService.canSendMessage(
+      data.conversationId,
+      data.senderId,
+    );
+
+    if (!canSend) {
+      return {
+        event: 'message_error',
+        data: {
+          error: 'Un autre agent a déjà pris en charge cette conversation',
+        },
+      };
+    }
+
     const message = await this.chatService.sendMessage(
       data.conversationId,
       data.senderId,
@@ -178,6 +193,27 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       userId: data.userId,
       isTyping: data.isTyping,
     });
+  }
+
+  @SubscribeMessage('close_conversation')
+  async handleCloseConversation(
+    @MessageBody() data: { conversationId: string; userId: string },
+  ) {
+    try {
+      await this.chatService.closeConversation(data.conversationId, data.userId);
+
+      // Notifier tous les participants que la conversation est fermée
+      this.server.to(`conversation:${data.conversationId}`).emit('conversation_closed', {
+        conversationId: data.conversationId,
+      });
+
+      return { event: 'conversation_closed', data: { success: true } };
+    } catch (error) {
+      return {
+        event: 'close_error',
+        data: { error: error.message },
+      };
+    }
   }
 
   private async updateOnlineStatus(userId: string, isOnline: boolean) {

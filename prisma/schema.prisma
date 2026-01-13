@@ -257,11 +257,14 @@ model ReferralWithdrawal {
 
   amount          Float
   phoneNumber     String   // Numéro pour le retrait
+  network         String   // FLOOZ ou TMONEY
   state           String   @default("PENDING") // PENDING, COMPLETED, REJECTED
+  rejectionReason String?  // Raison du rejet
 
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   processedAt     DateTime?
+  processedBy     String?  // ID du super admin qui a traité
 
   @@index([clientId])
   @@index([state])
@@ -279,6 +282,7 @@ model ChatConversation {
   agent       User?    @relation("AgentConversations", fields: [agentId], references: [id])
 
   type        String   @default("SUPPORT") // SUPPORT, AGENT
+  status      String   @default("OPEN") // OPEN, CLOSED
 
   lastMessageAt DateTime @default(now())
   createdAt     DateTime @default(now())
@@ -288,6 +292,7 @@ model ChatConversation {
   @@index([clientId])
   @@index([agentId])
   @@index([lastMessageAt])
+  @@index([status])
 }
 
 model ChatMessage {
