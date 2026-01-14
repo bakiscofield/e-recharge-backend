@@ -9,6 +9,7 @@ async function main() {
   // 1. Configuration de l'application
   console.log('📝 Creating app configuration...');
   await prisma.appConfig.createMany({
+    skipDuplicates: true,
     data: [
       {
         key: 'app_name',
@@ -110,6 +111,7 @@ async function main() {
   // 2. Code parrainage par défaut
   console.log('🎁 Creating default referral codes...');
   await prisma.referralCode.createMany({
+    skipDuplicates: true,
     data: [
       {
         code: 'ALICE2025',
@@ -129,32 +131,44 @@ async function main() {
   // 3. Bookmakers
   console.log('🎰 Creating bookmakers...');
   const bookmakers = await Promise.all([
-    prisma.bookmaker.create({
-      data: {
+    prisma.bookmaker.upsert({
+      where: { id: '1xbet-default' },
+      update: {},
+      create: {
+        id: '1xbet-default',
         name: '1xBet',
         countries: JSON.stringify(['TG', 'BJ', 'CI', 'SN', 'ML']),
         isActive: true,
         order: 1,
       },
     }),
-    prisma.bookmaker.create({
-      data: {
+    prisma.bookmaker.upsert({
+      where: { id: '22bet-default' },
+      update: {},
+      create: {
+        id: '22bet-default',
         name: '22Bet',
         countries: JSON.stringify(['TG', 'BJ', 'CI', 'SN']),
         isActive: true,
         order: 2,
       },
     }),
-    prisma.bookmaker.create({
-      data: {
+    prisma.bookmaker.upsert({
+      where: { id: 'betwinner-default' },
+      update: {},
+      create: {
+        id: 'betwinner-default',
         name: 'Betwinner',
         countries: JSON.stringify(['TG', 'BJ', 'CI']),
         isActive: true,
         order: 3,
       },
     }),
-    prisma.bookmaker.create({
-      data: {
+    prisma.bookmaker.upsert({
+      where: { id: 'parionssport-default' },
+      update: {},
+      create: {
+        id: 'parionssport-default',
         name: 'ParionsSport',
         countries: JSON.stringify(['TG', 'BJ', 'CI', 'SN', 'ML']),
         isActive: true,
@@ -167,8 +181,11 @@ async function main() {
   console.log('💳 Creating payment methods...');
   const paymentMethods = await Promise.all([
     // Mobile Money - Togo
-    prisma.paymentMethod.create({
-      data: {
+    prisma.paymentMethod.upsert({
+      where: { id: 'flooz-togo' },
+      update: {},
+      create: {
+        id: 'flooz-togo',
         type: 'MOBILE_MONEY',
         name: 'Flooz (Moov Togo)',
         countries: JSON.stringify(['TG']),
@@ -178,8 +195,11 @@ async function main() {
         order: 1,
       },
     }),
-    prisma.paymentMethod.create({
-      data: {
+    prisma.paymentMethod.upsert({
+      where: { id: 'tmoney-togo' },
+      update: {},
+      create: {
+        id: 'tmoney-togo',
         type: 'MOBILE_MONEY',
         name: 'TMoney (Togocel)',
         countries: JSON.stringify(['TG']),
@@ -190,8 +210,11 @@ async function main() {
       },
     }),
     // Mobile Money - Bénin
-    prisma.paymentMethod.create({
-      data: {
+    prisma.paymentMethod.upsert({
+      where: { id: 'mtn-momo' },
+      update: {},
+      create: {
+        id: 'mtn-momo',
         type: 'MOBILE_MONEY',
         name: 'MTN Mobile Money',
         countries: JSON.stringify(['BJ', 'CI', 'SN']),
@@ -201,8 +224,11 @@ async function main() {
         order: 3,
       },
     }),
-    prisma.paymentMethod.create({
-      data: {
+    prisma.paymentMethod.upsert({
+      where: { id: 'moov-money' },
+      update: {},
+      create: {
+        id: 'moov-money',
         type: 'MOBILE_MONEY',
         name: 'Moov Money',
         countries: JSON.stringify(['BJ', 'CI', 'SN']),
@@ -212,8 +238,11 @@ async function main() {
         order: 4,
       },
     }),
-    prisma.paymentMethod.create({
-      data: {
+    prisma.paymentMethod.upsert({
+      where: { id: 'orange-money' },
+      update: {},
+      create: {
+        id: 'orange-money',
         type: 'MOBILE_MONEY',
         name: 'Orange Money',
         countries: JSON.stringify(['BJ', 'CI', 'SN', 'ML']),
@@ -224,8 +253,11 @@ async function main() {
       },
     }),
     // Paiements bancaires
-    prisma.paymentMethod.create({
-      data: {
+    prisma.paymentMethod.upsert({
+      where: { id: 'carte-bancaire' },
+      update: {},
+      create: {
+        id: 'carte-bancaire',
         type: 'BANK',
         name: 'Carte Bancaire (Visa/Mastercard)',
         countries: JSON.stringify(['TG', 'BJ', 'CI', 'SN', 'ML']),
@@ -234,8 +266,11 @@ async function main() {
         order: 6,
       },
     }),
-    prisma.paymentMethod.create({
-      data: {
+    prisma.paymentMethod.upsert({
+      where: { id: 'virement-bancaire' },
+      update: {},
+      create: {
+        id: 'virement-bancaire',
         type: 'BANK',
         name: 'Virement Bancaire',
         countries: JSON.stringify(['TG', 'BJ', 'CI', 'SN', 'ML']),
@@ -245,8 +280,11 @@ async function main() {
       },
     }),
     // Autres
-    prisma.paymentMethod.create({
-      data: {
+    prisma.paymentMethod.upsert({
+      where: { id: 'western-union' },
+      update: {},
+      create: {
+        id: 'western-union',
         type: 'OTHER',
         name: 'Western Union',
         countries: JSON.stringify(['TG', 'BJ', 'CI', 'SN', 'ML']),
@@ -261,8 +299,10 @@ async function main() {
   console.log('👥 Creating test users...');
   const hashedPassword = await bcrypt.hash('password123', 10);
 
-  const admin = await prisma.user.create({
-    data: {
+  const admin = await prisma.user.upsert({
+    where: { phone: '+22890000001' },
+    update: {},
+    create: {
       email: 'admin@alicebot.com',
       phone: '+22890000001',
       password: hashedPassword,
@@ -275,8 +315,10 @@ async function main() {
     },
   });
 
-  const support = await prisma.user.create({
-    data: {
+  const support = await prisma.user.upsert({
+    where: { phone: '+22890000002' },
+    update: {},
+    create: {
       email: 'support@alicebot.com',
       phone: '+22890000002',
       password: hashedPassword,
@@ -289,8 +331,10 @@ async function main() {
   });
 
   const agents = await Promise.all([
-    prisma.user.create({
-      data: {
+    prisma.user.upsert({
+      where: { phone: '+22890111111' },
+      update: {},
+      create: {
         email: 'agent1@alicebot.com',
         phone: '+22890111111',
         password: hashedPassword,
@@ -302,8 +346,10 @@ async function main() {
         isOnline: true,
       },
     }),
-    prisma.user.create({
-      data: {
+    prisma.user.upsert({
+      where: { phone: '+22890222222' },
+      update: {},
+      create: {
         email: 'agent2@alicebot.com',
         phone: '+22890222222',
         password: hashedPassword,
@@ -315,8 +361,10 @@ async function main() {
         isOnline: true,
       },
     }),
-    prisma.user.create({
-      data: {
+    prisma.user.upsert({
+      where: { phone: '+22890333333' },
+      update: {},
+      create: {
         email: 'agent3@alicebot.com',
         phone: '+22890333333',
         password: hashedPassword,
@@ -330,8 +378,10 @@ async function main() {
     }),
   ]);
 
-  const client = await prisma.user.create({
-    data: {
+  const client = await prisma.user.upsert({
+    where: { phone: '+22890999999' },
+    update: {},
+    create: {
       email: 'client@test.com',
       phone: '+22890999999',
       password: hashedPassword,
@@ -351,6 +401,7 @@ async function main() {
 
   // Agent 1 (Togo) - Flooz + TMoney pour 1xBet
   await prisma.employeePaymentMethod.createMany({
+    skipDuplicates: true,
     data: [
       {
         employeeId: agents[0].id,
@@ -385,47 +436,47 @@ async function main() {
     ],
   });
 
-  // Agent 2 (Togo) - Flooz pour 22Bet
-  await prisma.employeePaymentMethod.create({
-    data: {
-      employeeId: agents[1].id,
-      bookmakerId: bookmakers[1].id, // 22Bet
-      paymentMethodId: paymentMethods[0].id, // Flooz
-      country: 'TG',
-      syntaxe: '*155*1*{montant}*90222222#',
-      frais: 100,
-      phoneNumber: '+22890222222',
-      address: JSON.stringify({
-        city: 'Lomé',
-        street: 'Avenue de la Libération',
-        establishment: 'Agence Awa',
-      }),
-      isActive: true,
-    },
-  });
-
-  // Agent 3 (Bénin) - MTN pour 1xBet
-  await prisma.employeePaymentMethod.create({
-    data: {
-      employeeId: agents[2].id,
-      bookmakerId: bookmakers[0].id, // 1xBet
-      paymentMethodId: paymentMethods[2].id, // MTN
-      country: 'BJ',
-      syntaxe: '*133*1*{montant}*90333333#',
-      frais: 50,
-      phoneNumber: '+22990333333',
-      address: JSON.stringify({
-        city: 'Cotonou',
-        street: 'Rue Steinmetz',
-        establishment: 'Point Yao',
-      }),
-      isActive: true,
-    },
+  // Agent 2 (Togo) - Flooz pour 22Bet + Agent 3 (Bénin) - MTN pour 1xBet
+  await prisma.employeePaymentMethod.createMany({
+    skipDuplicates: true,
+    data: [
+      {
+        employeeId: agents[1].id,
+        bookmakerId: bookmakers[1].id, // 22Bet
+        paymentMethodId: paymentMethods[0].id, // Flooz
+        country: 'TG',
+        syntaxe: '*155*1*{montant}*90222222#',
+        frais: 100,
+        phoneNumber: '+22890222222',
+        address: JSON.stringify({
+          city: 'Lomé',
+          street: 'Avenue de la Libération',
+          establishment: 'Agence Awa',
+        }),
+        isActive: true,
+      },
+      {
+        employeeId: agents[2].id,
+        bookmakerId: bookmakers[0].id, // 1xBet
+        paymentMethodId: paymentMethods[2].id, // MTN
+        country: 'BJ',
+        syntaxe: '*133*1*{montant}*90333333#',
+        frais: 50,
+        phoneNumber: '+22990333333',
+        address: JSON.stringify({
+          city: 'Cotonou',
+          street: 'Rue Steinmetz',
+          establishment: 'Point Yao',
+        }),
+        isActive: true,
+      },
+    ],
   });
 
   // 7. Bookmaker IDs pour le client
   console.log('🎮 Creating bookmaker identifiers...');
   await prisma.bookmakerIdentifier.createMany({
+    skipDuplicates: true,
     data: [
       {
         clientId: client.id,

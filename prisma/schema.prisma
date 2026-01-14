@@ -1,12 +1,12 @@
 // Prisma Schema pour AliceBot PWA
-// Database: SQLite (pour faciliter le déploiement mobile)
+// Database: PostgreSQL
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 

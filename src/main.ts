@@ -9,9 +9,12 @@ import * as express from 'express';
 async function bootstrap() {
   // Configure CORS
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-  const allowedOrigins = [frontendUrl, process.env.BACKEND_URL].filter(
-    (url): url is string => !!url,
-  );
+  const allowedOrigins = [
+    frontendUrl,
+    process.env.BACKEND_URL,
+    'http://localhost:3000',
+    'http://localhost:3001',
+  ].filter((url): url is string => !!url);
 
   const app = await NestFactory.create(AppModule);
 
