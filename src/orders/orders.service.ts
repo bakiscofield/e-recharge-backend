@@ -2,6 +2,7 @@ import { Injectable, BadRequestException, NotFoundException } from '@nestjs/comm
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CreateOrderDto, UpdateOrderStatusDto } from './dto';
+import { generateOrderEmail } from '../notifications/email-templates';
 
 @Injectable()
 export class OrdersService {
@@ -205,60 +206,51 @@ export class OrdersService {
       },
     });
 
-    // Si confirmé et commande de dépôt avec parrainage
+    // Si dépôt confirmé, verser la commission au parrain
     if (dto.state === 'CONFIRMED' && order.type === 'DEPOT') {
       const client = await this.prisma.user.findUnique({
         where: { id: order.clientId },
       });
 
       if (client?.referredBy) {
-        const referralCode = await this.prisma.referralCode.findUnique({
-          where: { code: client.referredBy, isActive: true },
+        // Chercher le parrain avec ce code
+        const referrer = await this.prisma.user.findUnique({
+          where: { referralCode: client.referredBy },
         });
 
-        if (referralCode) {
-          let shouldGiveCommission = true;
+        if (referrer) {
+          // Chercher le code de parrainage pour obtenir le pourcentage
+          const referralCode = await this.prisma.referralCode.findUnique({
+            where: { code: client.referredBy, isActive: true },
+          });
 
-          // Si le type de commission est FIRST_DEPOSIT, vérifier si c'est le premier dépôt
-          if (referralCode.commissionType === 'FIRST_DEPOSIT') {
-            const previousDeposits = await this.prisma.order.count({
-              where: {
-                clientId: order.clientId,
-                type: 'DEPOT',
-                state: 'CONFIRMED',
-                id: { not: order.id }, // Exclure la commande actuelle
+          // Utiliser le pourcentage du code ou 5% par défaut
+          const commissionPercent = referralCode?.commissionPercent || 5;
+          const commission = (order.amount * commissionPercent) / 100;
+
+          // Ajouter la commission au solde du parrain
+          await this.prisma.user.update({
+            where: { id: referrer.id },
+            data: {
+              referralBalance: {
+                increment: commission,
               },
-            });
+            },
+          });
 
-            shouldGiveCommission = previousDeposits === 0;
-          }
-
-          if (shouldGiveCommission) {
-            const commission = (order.amount * referralCode.commissionPercent) / 100;
-
-            const referrer = await this.prisma.user.findUnique({
-              where: { referralCode: client.referredBy },
-            });
-
-            if (referrer) {
-              await this.prisma.user.update({
-                where: { id: referrer.id },
-                data: {
-                  referralBalance: {
-                    increment: commission,
-                  },
-                },
-              });
-
-              await this.notificationsService.create({
-                userId: referrer.id,
-                type: 'REFERRAL_COMMISSION',
-                title: 'Commission de parrainage',
-                body: `Vous avez reçu ${commission} FCFA de commission`,
-                data: JSON.stringify({ orderId: order.id, commission }),
-              });
-            }
-          }
+          // Notifier le parrain
+          await this.notificationsService.create({
+            userId: referrer.id,
+            type: 'REFERRAL_COMMISSION',
+            title: 'Commission de parrainage',
+            body: `Vous avez reçu ${commission.toLocaleString('fr-FR')} FCFA de commission sur le dépôt de ${client.firstName} (${order.amount.toLocaleString('fr-FR')} FCFA)`,
+            data: JSON.stringify({
+              orderId: order.id,
+              commission,
+              filleulName: `${client.firstName} ${client.lastName}`,
+              depositAmount: order.amount,
+            }),
+          });
         }
       }
     }
@@ -275,16 +267,34 @@ export class OrdersService {
       data: JSON.stringify({ orderId: order.id }),
     });
 
-    // Email notification
+    // Email notification avec template professionnel
+    const transactionType = order.type === 'DEPOT' ? 'Dépôt' : 'Retrait';
+    const emailSubject = dto.state === 'CONFIRMED'
+      ? `${transactionType} Confirmé - ${order.amount.toLocaleString('fr-FR')} FCFA`
+      : `${transactionType} Non Confirmé`;
+
+    const emailHtml = generateOrderEmail(dto.state as 'CONFIRMED' | 'CANCELLED', {
+      clientName: order.client.firstName,
+      orderType: order.type as 'DEPOT' | 'RETRAIT',
+      amount: order.amount,
+      fees: order.fees,
+      bookmakerName: order.employeePaymentMethod.bookmaker.name,
+      orderId: order.id,
+      date: new Date(order.createdAt).toLocaleDateString('fr-FR', {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
+      cancellationReason: dto.cancellationReason,
+      appName: process.env.APP_NAME || 'Notre Plateforme',
+    });
+
     await this.notificationsService.sendEmail({
       to: order.client.email || order.client.phone + '@sms.local',
-      subject: `Commande ${dto.state === 'CONFIRMED' ? 'confirmée' : 'annulée'}`,
-      html: `
-        <h2>Bonjour ${order.client.firstName},</h2>
-        <p>Votre ${order.type === 'DEPOT' ? 'dépôt' : 'retrait'} de ${order.amount} FCFA a été ${dto.state === 'CONFIRMED' ? 'confirmé' : 'annulé'}.</p>
-        ${dto.cancellationReason ? `<p>Raison: ${dto.cancellationReason}</p>` : ''}
-        <p>Merci de votre confiance!</p>
-      `,
+      subject: emailSubject,
+      html: emailHtml,
     });
 
     // Log audit

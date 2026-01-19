@@ -64,4 +64,10 @@ export class AuthController {
   async loginWithOtp(@Body() dto: LoginWithOtpDto) {
     return this.authService.loginWithOtp(dto);
   }
+
+  @Post('refresh')
+  @ApiOperation({ summary: 'Rafraîchir le token d\'accès' })
+  async refreshToken(@Body() body: { refreshToken: string }) {
+    return this.authService.refreshToken(body.refreshToken);
+  }
 }

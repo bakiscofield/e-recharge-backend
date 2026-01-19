@@ -80,12 +80,13 @@ export class AuthService {
       },
     });
 
-    // Générer le token JWT
-    const token = this.generateToken(user);
+    // Générer les tokens JWT
+    const tokens = this.generateTokens(user);
 
     return {
       user: this.sanitizeUser(user),
-      token,
+      token: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
     };
   }
 
@@ -116,13 +117,13 @@ export class AuthService {
     }
 
     console.log(user);
-    
 
-    const token = this.generateToken(user);
+    const tokens = this.generateTokens(user);
 
     return {
       user: this.sanitizeUser(user),
-      token,
+      token: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
     };
   }
 
@@ -233,6 +234,7 @@ export class AuthService {
       user = await this.prisma.user.create({
         data: {
           phone: normalizedPhone,
+          email: `${normalizedPhone}@sms.local`,
           firstName: dto.firstName,
           lastName: dto.lastName,
           country: dto.country,
@@ -243,15 +245,16 @@ export class AuthService {
       });
     }
 
-    const token = this.generateToken(user);
+    const tokens = this.generateTokens(user);
 
     return {
       user: this.sanitizeUser(user),
-      token,
+      token: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
     };
   }
 
-  // Générer token JWT
+  // Générer token JWT (access token - courte durée)
   private generateToken(user: any) {
     const payload = {
       sub: user.id,
@@ -261,6 +264,55 @@ export class AuthService {
     };
 
     return this.jwtService.sign(payload);
+  }
+
+  // Générer refresh token (longue durée - 90 jours)
+  private generateRefreshToken(user: any) {
+    const payload = {
+      sub: user.id,
+      type: 'refresh',
+    };
+
+    return this.jwtService.sign(payload, {
+      expiresIn: '90d',
+    });
+  }
+
+  // Générer les deux tokens
+  private generateTokens(user: any) {
+    return {
+      accessToken: this.generateToken(user),
+      refreshToken: this.generateRefreshToken(user),
+    };
+  }
+
+  // Rafraîchir le token d'accès
+  async refreshToken(refreshToken: string) {
+    try {
+      const payload = this.jwtService.verify(refreshToken);
+
+      if (payload.type !== 'refresh') {
+        throw new UnauthorizedException('Token invalide');
+      }
+
+      const user = await this.prisma.user.findUnique({
+        where: { id: payload.sub },
+      });
+
+      if (!user) {
+        throw new UnauthorizedException('Utilisateur non trouvé');
+      }
+
+      // Générer un nouveau access token
+      const newAccessToken = this.generateToken(user);
+
+      return {
+        accessToken: newAccessToken,
+        user: this.sanitizeUser(user),
+      };
+    } catch (error) {
+      throw new UnauthorizedException('Refresh token invalide ou expiré');
+    }
   }
 
   // Retirer les infos sensibles
@@ -439,20 +491,19 @@ export class AuthService {
       },
     });
 
-    // Générer le token JWT
-    const token = this.generateToken(updatedUser);
+    // Générer les tokens JWT
+    const tokens = this.generateTokens(updatedUser);
 
     return {
       user: this.sanitizeUser(updatedUser),
-      token,
+      token: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
     };
   }
 
-  // Générer un code à 6 chiffres pour l'email
+  // Générer un code à 4 chiffres pour l'email
   private generateEmailVerificationCode(): string {
-    return Math.floor(Math.random() * 1000000)
-      .toString()
-      .padStart(6, '0');
+    return Math.floor(1000 + Math.random() * 9000).toString();
   }
 
   // Normaliser un numéro de téléphone (enlever +228 et 228)

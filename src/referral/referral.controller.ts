@@ -63,7 +63,7 @@ export class ReferralController {
   @Put('withdrawals/:id/process')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN', 'SUPPORT')
+  @Roles('SUPER_ADMIN', 'ADMIN', 'SUPPORT')
   @ApiOperation({ summary: 'Traiter une demande de retrait (Admin)' })
   async processWithdrawal(
     @CurrentUser() user: any,
@@ -81,7 +81,7 @@ export class ReferralController {
   @Get('withdrawals/all')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN', 'SUPPORT')
+  @Roles('SUPER_ADMIN', 'ADMIN', 'SUPPORT')
   @ApiOperation({ summary: 'Obtenir toutes les demandes de retrait (Super Admin)' })
   async getAllWithdrawals(
     @Query('state') state?: string,

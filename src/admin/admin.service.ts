@@ -14,7 +14,8 @@ export class AdminService {
       totalUsers,
       totalOrders,
       pendingOrders,
-      totalRevenue,
+      totalDeposits,
+      totalWithdrawals,
       totalAgents,
       onlineAgents,
     ] = await Promise.all([
@@ -37,6 +38,17 @@ export class AdminService {
       this.prisma.order.aggregate({
         where: {
           state: 'CONFIRMED',
+          type: 'DEPOT',
+          employeePaymentMethod: {
+            employeeId: adminId,
+          },
+        },
+        _sum: { amount: true, fees: true },
+      }),
+      this.prisma.order.aggregate({
+        where: {
+          state: 'CONFIRMED',
+          type: 'RETRAIT',
           employeePaymentMethod: {
             employeeId: adminId,
           },
@@ -51,8 +63,10 @@ export class AdminService {
       totalUsers,
       totalOrders,
       pendingOrders,
-      totalRevenue: totalRevenue._sum.amount || 0,
-      totalFees: totalRevenue._sum.fees || 0,
+      totalDeposits: totalDeposits._sum.amount || 0,
+      totalWithdrawals: totalWithdrawals._sum.amount || 0,
+      depositFees: totalDeposits._sum.fees || 0,
+      withdrawalFees: totalWithdrawals._sum.fees || 0,
       totalAgents,
       onlineAgents,
     };

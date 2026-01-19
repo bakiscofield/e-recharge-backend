@@ -36,4 +36,31 @@ export class AppConfigController {
   }) {
     return this.configService.updateBranding(branding);
   }
+
+  // ==================== INFO PAGE ====================
+
+  @Get('info-page')
+  @ApiOperation({ summary: 'Obtenir le contenu de la page Informations' })
+  async getInfoPageContent() {
+    return this.configService.getInfoPageContent();
+  }
+
+  @Put('info-page')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Mettre à jour le contenu de la page Informations' })
+  async updateInfoPageContent(@Body() content: {
+    whatsapp?: string;
+    whatsappLink?: string;
+    phone?: string;
+    email?: string;
+    facebook?: string;
+    twitter?: string;
+    instagram?: string;
+    tiktok?: string;
+    faq?: Array<{ question: string; answer: string }>;
+    termsText?: string;
+    version?: string;
+  }) {
+    return this.configService.updateInfoPageContent(content);
+  }
 }

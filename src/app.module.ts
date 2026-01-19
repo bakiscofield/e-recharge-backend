@@ -18,6 +18,7 @@ import { ThemeModule } from './theme/theme.module';
 import { NewsletterModule } from './newsletter/newsletter.module';
 import { UploadModule } from './upload/upload.module';
 import { AnnouncementsModule } from './announcements/announcements.module';
+import { CouponsModule } from './coupons/coupons.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { AnnouncementsModule } from './announcements/announcements.module';
     NewsletterModule,
     UploadModule,
     AnnouncementsModule,
+    CouponsModule,
   ],
 })
 export class AppModule {}

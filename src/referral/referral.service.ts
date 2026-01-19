@@ -58,7 +58,16 @@ export class ReferralService {
       },
     });
 
-    return user;
+    // Get the withdrawal threshold from config (using 'DEFAULT' code)
+    const config = await this.prisma.referralCode.findUnique({
+      where: { code: 'DEFAULT' },
+    });
+
+    return {
+      ...user,
+      referralBalance: user?.referralBalance ?? 0,
+      withdrawalThreshold: config?.withdrawalThreshold ?? 2000,
+    };
   }
 
   async getWithdrawals(userId: string) {

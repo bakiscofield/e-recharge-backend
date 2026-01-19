@@ -14,7 +14,7 @@ datasource db {
 
 model User {
   id            String   @id @default(uuid())
-  email         String?  @unique
+  email         String   @unique
   phone         String   @unique
   password      String?  // null si auth par OTP uniquement
   firstName     String
@@ -585,5 +585,37 @@ model Announcement {
 
   @@index([isActive])
   @@index([displayType])
+  @@index([createdAt])
+}
+
+// ==================== COUPONS ====================
+
+model Coupon {
+  id          String   @id @default(uuid())
+
+  title       String?  // Titre du coupon ou match (optionnel)
+  description String?  // Description courte (optionnel)
+  content     String?  // Contenu détaillé (pronostics, analyses, etc.) (optionnel)
+
+  // Type
+  type        String   // MATCH ou COUPON
+
+  // Fichiers optionnels
+  imageUrl     String?  // Image du coupon
+  documentUrl  String?  // PDF ou document attaché (ancien champ, gardé pour compatibilité)
+  documentUrls String[] // URLs des documents multiples
+
+  // Date du match (pour le type MATCH)
+  date        DateTime @default(now())
+
+  // Statut
+  isActive    Boolean  @default(true)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([type])
+  @@index([isActive])
+  @@index([date])
   @@index([createdAt])
 }

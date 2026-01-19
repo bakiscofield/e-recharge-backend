@@ -2,20 +2,18 @@ import { IsEmail, IsString, IsOptional, MinLength, IsPhoneNumber } from 'class-v
 import { ApiProperty } from '@nestjs/swagger';
 
 export class RegisterDto {
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsEmail()
-  email?: string;
+  @ApiProperty({ description: 'Email obligatoire et unique' })
+  @IsEmail({}, { message: 'Email invalide' })
+  email: string;
 
-  @ApiProperty()
+  @ApiProperty({ description: 'Numéro de téléphone obligatoire et unique' })
   @IsString()
   phone: string;
 
-  @ApiProperty({ required: false })
-  @IsOptional()
+  @ApiProperty()
   @IsString()
-  @MinLength(6)
-  password?: string;
+  @MinLength(6, { message: 'Le mot de passe doit contenir au moins 6 caractères' })
+  password: string;
 
   @ApiProperty()
   @IsString()
@@ -78,7 +76,7 @@ export class VerifyEmailCodeDto {
   @IsEmail()
   email: string;
 
-  @ApiProperty({ description: 'Code à 6 chiffres' })
+  @ApiProperty({ description: 'Code à 4 chiffres' })
   @IsString()
   code: string;
 }

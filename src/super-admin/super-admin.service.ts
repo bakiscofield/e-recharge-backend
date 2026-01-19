@@ -36,7 +36,7 @@ export class SuperAdminService {
     // Créer l'admin
     return this.prisma.user.create({
       data: {
-        email: data.email,
+        email: data.email || `${data.phone}@sms.local`,
         phone: data.phone,
         password: hashedPassword,
         firstName: data.firstName,
@@ -237,7 +237,7 @@ export class SuperAdminService {
     // Créer l'agent
     const agent = await this.prisma.user.create({
       data: {
-        email: data.email,
+        email: data.email || `${data.phone}@sms.local`,
         phone: data.phone,
         password: hashedPassword,
         firstName: data.firstName,
@@ -602,7 +602,8 @@ export class SuperAdminService {
       totalOrders,
       pendingOrders,
       confirmedOrders,
-      totalRevenue,
+      totalDeposits,
+      totalWithdrawals,
       bookmakers,
       paymentMethods,
     ] = await Promise.all([
@@ -615,7 +616,11 @@ export class SuperAdminService {
       this.prisma.order.count({ where: { state: 'COMING' } }),
       this.prisma.order.count({ where: { state: 'CONFIRMED' } }),
       this.prisma.order.aggregate({
-        where: { state: 'CONFIRMED' },
+        where: { state: 'CONFIRMED', type: 'DEPOT' },
+        _sum: { amount: true, fees: true },
+      }),
+      this.prisma.order.aggregate({
+        where: { state: 'CONFIRMED', type: 'RETRAIT' },
         _sum: { amount: true, fees: true },
       }),
       this.prisma.bookmaker.count(),
@@ -634,8 +639,10 @@ export class SuperAdminService {
         total: totalOrders,
         pending: pendingOrders,
         confirmed: confirmedOrders,
-        revenue: totalRevenue._sum.amount || 0,
-        fees: totalRevenue._sum.fees || 0,
+        totalDeposits: totalDeposits._sum.amount || 0,
+        totalWithdrawals: totalWithdrawals._sum.amount || 0,
+        depositFees: totalDeposits._sum.fees || 0,
+        withdrawalFees: totalWithdrawals._sum.fees || 0,
       },
       system: {
         bookmakers,
@@ -898,14 +905,14 @@ export class SuperAdminService {
   // ==================== CONFIGURATION PARRAINAGE ====================
 
   async getReferralConfig() {
-    const config = await this.prisma.referralCode.findFirst({
-      where: { isActive: true },
-      orderBy: { createdAt: 'desc' },
+    // Chercher la config système par son code unique 'DEFAULT'
+    let config = await this.prisma.referralCode.findUnique({
+      where: { code: 'DEFAULT' },
     });
 
     // Si aucune config, créer une config par défaut
     if (!config) {
-      return this.prisma.referralCode.create({
+      config = await this.prisma.referralCode.create({
         data: {
           code: 'DEFAULT',
           commissionPercent: 5,

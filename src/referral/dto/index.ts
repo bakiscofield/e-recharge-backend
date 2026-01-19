@@ -11,8 +11,8 @@ export class RequestWithdrawalDto {
   @IsString()
   phoneNumber: string;
 
-  @ApiProperty({ enum: ['FLOOZ', 'TMONEY'] })
+  @ApiProperty({ enum: ['FLOOZ', 'MIXX_BY_YAS'] })
   @IsString()
-  @IsIn(['FLOOZ', 'TMONEY'])
+  @IsIn(['FLOOZ', 'MIXX_BY_YAS'])
   network: string;
 }
