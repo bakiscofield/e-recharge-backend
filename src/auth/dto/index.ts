@@ -6,6 +6,10 @@ export class RegisterDto {
   @IsEmail({}, { message: 'Email invalide' })
   email: string;
 
+  @ApiProperty({ description: 'Code de vérification à 4 chiffres reçu par email' })
+  @IsString()
+  verificationCode: string;
+
   @ApiProperty({ description: 'Numéro de téléphone obligatoire et unique' })
   @IsString()
   phone: string;

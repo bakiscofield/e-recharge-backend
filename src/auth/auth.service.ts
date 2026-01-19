@@ -28,10 +28,37 @@ export class AuthService {
     private emailService: EmailService,
   ) {}
 
-  // Inscription classique (email + password)
+  // Inscription classique (email + password + code de vérification)
   async register(dto: RegisterDto) {
+    // Vérifier que l'email et le mot de passe sont fournis
+    if (!dto.email) {
+      throw new BadRequestException('L\'email est obligatoire');
+    }
+    if (!dto.password) {
+      throw new BadRequestException('Le mot de passe est obligatoire');
+    }
+    if (!dto.verificationCode) {
+      throw new BadRequestException('Le code de vérification est obligatoire');
+    }
+
     // Normaliser le numéro de téléphone
     const normalizedPhone = this.normalizePhoneNumber(dto.phone);
+
+    // Vérifier le code de vérification email
+    const verificationRecord = await this.prisma.emailVerificationCode.findFirst({
+      where: {
+        email: dto.email,
+        code: dto.verificationCode,
+        verified: false,
+        expiresAt: {
+          gt: new Date(),
+        },
+      },
+    });
+
+    if (!verificationRecord) {
+      throw new UnauthorizedException('Code de vérification invalide ou expiré');
+    }
 
     // Vérifier si l'utilisateur existe déjà
     const existingUser = await this.prisma.user.findFirst({
@@ -59,9 +86,7 @@ export class AuthService {
     }
 
     // Hash password
-    const hashedPassword = dto.password
-      ? await bcrypt.hash(dto.password, 10)
-      : null;
+    const hashedPassword = await bcrypt.hash(dto.password, 10);
 
     // Générer un code parrainage unique
     const referralCode = await this.generateUniqueReferralCode();
@@ -76,8 +101,16 @@ export class AuthService {
         lastName: dto.lastName,
         country: dto.country,
         referralCode,
-        referredBy: validReferredBy, // Seulement si le code est valide, sinon null
+        referredBy: validReferredBy,
+        emailVerified: true, // Email vérifié via le code
+        isVerified: true,
       },
+    });
+
+    // Marquer le code comme utilisé
+    await this.prisma.emailVerificationCode.update({
+      where: { id: verificationRecord.id },
+      data: { verified: true },
     });
 
     // Générer les tokens JWT
@@ -358,12 +391,12 @@ export class AuthService {
 
   // Envoyer un code de vérification par email (4 chiffres)
   async sendEmailVerificationCode(email: string) {
-    // Vérifier que l'email n'est pas déjà utilisé
+    // Vérifier que l'email n'est pas déjà utilisé par un compte existant
     const existingUser = await this.prisma.user.findUnique({
       where: { email },
     });
 
-    if (existingUser && existingUser.emailVerified) {
+    if (existingUser) {
       throw new ConflictException('Cet email est déjà utilisé');
     }
 
@@ -371,22 +404,20 @@ export class AuthService {
     const code = this.generateEmailVerificationCode();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // Expire dans 15 minutes
 
-    // Sauvegarder le code de vérification temporairement
-    // On peut utiliser une table temporaire ou juste sauvegarder sur l'utilisateur
-    const tempUser = await this.prisma.user.upsert({
-      where: { email },
-      update: {
-        emailVerificationCode: code,
-        emailVerificationCodeExpiresAt: expiresAt,
-      },
-      create: {
+    // Supprimer les anciens codes non utilisés pour cet email
+    await this.prisma.emailVerificationCode.deleteMany({
+      where: {
         email,
-        phone: `temp_${Date.now()}`, // Temporaire, sera remplacé
-        firstName: 'Temp',
-        lastName: 'Temp',
-        country: 'TG',
-        emailVerificationCode: code,
-        emailVerificationCodeExpiresAt: expiresAt,
+        verified: false,
+      },
+    });
+
+    // Sauvegarder le code de vérification dans la table dédiée
+    await this.prisma.emailVerificationCode.create({
+      data: {
+        email,
+        code,
+        expiresAt,
       },
     });
 

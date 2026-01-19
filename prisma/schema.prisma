@@ -79,6 +79,17 @@ model OtpCode {
   @@index([phone, code])
 }
 
+model EmailVerificationCode {
+  id        String   @id @default(uuid())
+  email     String
+  code      String
+  expiresAt DateTime
+  verified  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([email, code])
+}
+
 // ==================== CONFIGURATION ====================
 
 model AppConfig {
