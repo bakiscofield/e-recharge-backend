@@ -10,13 +10,21 @@ export class ChatService {
     agentId?: string,
     type: string = 'SUPPORT',
   ) {
+    // Chercher une conversation ouverte pour ce client
+    // Ne pas filtrer par agentId pour retrouver la conversation même si un agent a été assigné
+    const whereClause: any = {
+      clientId,
+      type,
+      status: 'OPEN',
+    };
+
+    // Si un agentId est explicitement fourni, filtrer par cet agent
+    if (agentId) {
+      whereClause.agentId = agentId;
+    }
+
     let conversation = await this.prisma.chatConversation.findFirst({
-      where: {
-        clientId,
-        agentId: agentId || null,
-        type,
-        status: 'OPEN', // Ne chercher que les conversations ouvertes
-      },
+      where: whereClause,
       include: {
         client: {
           select: {
