@@ -170,16 +170,16 @@ export class NewsletterService {
       throw new BadRequestException('Impossible d\'envoyer une newsletter en mode brouillon. Publiez-la d\'abord.');
     }
 
-    // Récupérer tous les utilisateurs avec email
-    const whereClause: any = {
-      email: { not: null },
-    };
+    // Récupérer tous les utilisateurs avec email valide (contient @)
+    const conditions: any[] = [
+      { email: { contains: '@' } },
+    ];
 
     // Filtrer par pays si spécifié
     if (newsletter.targetCountries) {
       const countries = JSON.parse(newsletter.targetCountries);
       if (countries.length > 0) {
-        whereClause.country = { in: countries };
+        conditions.push({ country: { in: countries } });
       }
     }
 
@@ -187,9 +187,11 @@ export class NewsletterService {
     if (newsletter.targetRoles) {
       const roles = JSON.parse(newsletter.targetRoles);
       if (roles.length > 0) {
-        whereClause.role = { in: roles };
+        conditions.push({ role: { in: roles } });
       }
     }
+
+    const whereClause = { AND: conditions };
 
     const subscribers = await this.prisma.user.findMany({
       where: whereClause,
