@@ -219,13 +219,13 @@ export class OrdersService {
         });
 
         if (referrer) {
-          // Chercher le code de parrainage pour obtenir le pourcentage
-          const referralCode = await this.prisma.referralCode.findUnique({
-            where: { code: client.referredBy, isActive: true },
+          // Chercher la configuration de parrainage globale (code 'DEFAULT')
+          const referralConfig = await this.prisma.referralCode.findUnique({
+            where: { code: 'DEFAULT' },
           });
 
-          // Utiliser le pourcentage du code ou 5% par défaut
-          const commissionPercent = referralCode?.commissionPercent || 5;
+          // Utiliser le pourcentage configuré ou 5% par défaut
+          const commissionPercent = referralConfig?.commissionPercent ?? 5;
           const commission = (order.amount * commissionPercent) / 100;
 
           // Ajouter la commission au solde du parrain

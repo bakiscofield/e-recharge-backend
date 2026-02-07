@@ -67,6 +67,7 @@ export class ReferralService {
       ...user,
       referralBalance: user?.referralBalance ?? 0,
       withdrawalThreshold: config?.withdrawalThreshold ?? 2000,
+      commissionPercent: config?.commissionPercent ?? 5,
     };
   }
 
